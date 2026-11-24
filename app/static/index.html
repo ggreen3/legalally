@@ -1,0 +1,357 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#080a0b">
+  <title>LegAlly — One operating system for law in Kenya</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-row">
+      <a class="brand" href="/" data-nav="overview" aria-label="LegAlly overview">
+        <span class="brand-mark" aria-hidden="true">LA</span>
+        <span class="brand-name">LegAlly</span>
+      </a>
+      <nav class="nav" aria-label="Main navigation">
+        <button type="button" data-nav="overview" class="active"><span class="nav-idx">00</span>Overview</button>
+        <button type="button" data-nav="checkbar"><span class="nav-idx">01</span>The Checkbar</button>
+        <button type="button" data-nav="briefcase"><span class="nav-idx">02</span>BriefCase</button>
+        <button type="button" data-nav="talent"><span class="nav-idx">03</span>Talent</button>
+        <button type="button" data-nav="education"><span class="nav-idx">04</span>Academy</button>
+        <button type="button" data-nav="innovation"><span class="nav-idx">05</span>Innovation</button>
+        <button type="button" data-nav="platform"><span class="nav-idx">06</span>Platform</button>
+      </nav>
+      <div class="authbar">
+        <span class="status-cluster">
+          <span id="auth-dot" class="status-dot" aria-hidden="true"></span>
+          <span id="auth-status" class="muted">Not signed in</span>
+        </span>
+        <button id="auth-trigger" type="button" class="btn ghost small" aria-expanded="false" aria-controls="auth-form">Sign in</button>
+        <button id="logout-btn" type="button" class="btn ghost small" hidden>Sign out</button>
+      </div>
+    </div>
+    <form id="auth-form" class="auth-drawer" autocomplete="on">
+      <div class="auth-drawer-inner">
+        <label class="sr-only" for="auth-email">Email</label>
+        <input id="auth-email" type="email" placeholder="Email" autocomplete="username">
+        <label class="sr-only" for="auth-password">Password</label>
+        <input id="auth-password" type="password" placeholder="Password" autocomplete="current-password">
+        <label class="sr-only" for="auth-name">Full name</label>
+        <input id="auth-name" type="text" placeholder="Full name" hidden>
+        <label class="sr-only" for="auth-tenant">Firm name</label>
+        <input id="auth-tenant" type="text" placeholder="Firm name" hidden>
+        <button id="login-btn" type="button" class="btn primary small">Sign in</button>
+        <button id="register-btn" type="button" class="btn primary small" hidden>Register</button>
+        <button id="toggle-register" type="button" class="btn link">Create account</button>
+      </div>
+    </form>
+  </header>
+
+  <main>
+    <section id="section-overview" class="section active">
+      <div class="hero">
+        <div class="hero-copy">
+          <p class="eyebrow"><span class="eyebrow-rule"></span>Legally / Kenya / 2026</p>
+          <h1>One operating system for <span class="accent-text">law in Kenya.</span></h1>
+          <p class="lede">Practice, talent, learning and access to justice — connected in a single system built for the way law actually works.</p>
+          <div class="hero-actions">
+            <button type="button" class="btn primary" data-nav="checkbar">Open The Checkbar <span aria-hidden="true">→</span></button>
+            <button type="button" class="btn ghost" data-nav="briefcase">Explore BriefCase</button>
+          </div>
+          <div class="hero-signals">
+            <span class="signal"><span class="dot live"></span><span id="hero-health">Checking system</span></span>
+            <span class="signal mono" id="hero-pillar-count">06 Modules</span>
+          </div>
+        </div>
+        <div class="hero-product" aria-label="Checkbar product preview">
+          <div class="window">
+            <div class="window-bar">
+              <span class="window-path mono">checkbar / pico-stream</span>
+              <span class="window-state mono"><span class="dot live"></span>Live</span>
+            </div>
+            <div class="window-body">
+              <div class="prompt-line"><span class="prompt-arrow" aria-hidden="true">›</span>What is the difference between civil and criminal cases?</div>
+              <div class="stream-block">
+                <div class="stream-meta mono"><span class="violet-dot"></span>Pico / streaming</div>
+                <p class="stream-text">Civil cases resolve private disputes such as contracts or property between parties, usually with compensation or an order as the outcome. Criminal cases are brought by the state against a person accused of an offence<span class="caret static" aria-hidden="true"></span></p>
+              </div>
+              <div class="citation-row"><span class="citation">Constitution of Kenya · Article 50</span><span class="citation">Civil Procedure Act</span></div>
+            </div>
+            <div class="window-foot mono"><span>provider: local</span><span>latency: 128ms</span><span>session: demo</span></div>
+          </div>
+        </div>
+      </div>
+      <div class="overview-block">
+        <div class="block-head">
+          <p class="eyebrow"><span class="idx mono">00</span>System map</p>
+          <h2>Built as one system, not six products.</h2>
+          <p class="muted">Every module shares a tenant, a permission model and an audit trail.</p>
+        </div>
+        <div class="card-grid" id="pillar-grid"></div>
+      </div>
+      <div class="panel demo-panel">
+        <div class="demo-copy">
+          <p class="eyebrow"><span class="idx mono">↳</span>Demo access</p>
+          <h3>Explore the full ecosystem.</h3>
+          <p class="muted">Sign in with the seeded demo account, or register a new firm to create an isolated tenant with starter access.</p>
+        </div>
+        <div class="credential mono">
+          <span>admin@legalally.co.ke</span>
+          <span class="credential-sep">/</span>
+          <span>Admin123!</span>
+          <button type="button" class="btn ghost small" id="demo-login">Use demo credentials</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="section-checkbar" class="section">
+      <div class="section-heading">
+        <p class="eyebrow"><span class="idx mono">01</span>Legal intelligence</p>
+        <h2>The Checkbar</h2>
+        <p class="muted">Ask a plain-language legal question. Answers are general information for Kenya and are not legal advice.</p>
+      </div>
+      <div class="two-column">
+        <form id="checkbar-form" class="panel form-stack requires-auth">
+          <div class="panel-head">
+            <h3>New question</h3>
+            <span class="mono panel-kicker">Pico stream</span>
+          </div>
+          <label>Question
+            <textarea id="check-question" minlength="5" maxlength="2000" required placeholder="e.g. What is the difference between civil and criminal cases?"></textarea>
+          </label>
+          <div class="form-row">
+            <label>You are a
+              <select id="check-user-type">
+                <option>General public</option>
+                <option>Law student</option>
+                <option>Legal professional</option>
+              </select>
+            </label>
+            <label>Location
+              <input id="check-location" value="Kenya" maxlength="120">
+            </label>
+          </div>
+          <label>Area of law
+            <select id="check-area">
+              <option>Understanding a legal concept or procedure</option>
+              <option>Contracts and agreements</option>
+              <option>Employment</option>
+              <option>Land and tenancy</option>
+              <option>Family and succession</option>
+              <option>Crime and bail</option>
+            </select>
+          </label>
+          <button type="submit" class="btn primary">Ask The Checkbar <span aria-hidden="true">→</span></button>
+        </form>
+        <div class="panel answer-panel">
+          <div class="panel-head">
+            <h3>Answer</h3>
+            <span id="check-stream-status" class="stream-status mono" data-mode="idle">Pico / idle</span>
+          </div>
+          <div id="check-answer" class="result"></div>
+          <div id="check-citations"></div>
+          <p class="disclaimer mono" id="check-disclaimer"></p>
+        </div>
+      </div>
+      <div class="panel requires-auth">
+        <div class="panel-head"><h3>Recent questions</h3><span class="mono panel-kicker">Tenant history</span></div>
+        <div id="check-history" class="list"></div>
+      </div>
+    </section>
+
+    <section id="section-briefcase" class="section">
+      <div class="section-heading">
+        <p class="eyebrow"><span class="idx mono">02</span>Virtual law firm</p>
+        <h2>BriefCase</h2>
+        <p class="muted">Manage clients, matters, documents, billable time and invoices with tenant isolation.</p>
+      </div>
+      <div class="requires-auth">
+        <div class="stat-grid" id="brief-stats"></div>
+        <div class="two-column">
+          <div class="panel">
+            <div class="panel-head"><h3>Clients</h3><span id="client-count" class="badge">0</span></div>
+            <form id="client-form" class="form-stack compact">
+              <input id="client-name" placeholder="Client name" required minlength="2">
+              <input id="client-email" type="email" placeholder="Email">
+              <input id="client-phone" placeholder="Phone">
+              <button type="submit" class="btn primary small">Add client</button>
+            </form>
+            <div id="client-list" class="list"></div>
+          </div>
+          <div class="panel">
+            <div class="panel-head"><h3>Matters</h3><span id="case-count" class="badge">0</span></div>
+            <form id="case-form" class="form-stack compact">
+              <input id="case-title" placeholder="Matter title" required minlength="3">
+              <select id="case-client"></select>
+              <input id="case-number" placeholder="Case number">
+              <button type="submit" class="btn primary small">Add matter</button>
+              <button type="button" id="case-brief-btn" class="btn ghost small">Generate case brief</button>
+            </form>
+            <div id="case-brief-output" class="result" hidden></div>
+            <div id="case-list" class="list"></div>
+          </div>
+        </div>
+        <div class="two-column">
+          <div class="panel">
+            <div class="panel-head"><h3>Documents</h3><span id="doc-count" class="badge">0</span></div>
+            <form id="doc-form" class="form-stack compact">
+              <input id="doc-title" placeholder="Document title" required minlength="2">
+              <select id="doc-case"></select>
+              <select id="doc-type">
+                <option value="general">General</option>
+                <option value="contract">Contract</option>
+                <option value="pleading">Pleading</option>
+                <option value="correspondence">Correspondence</option>
+              </select>
+              <textarea id="doc-content" placeholder="Draft content"></textarea>
+              <button type="submit" class="btn primary small">Add document</button>
+              <button type="button" id="doc-draft-btn" class="btn ghost small">AI draft</button>
+            </form>
+            <div id="doc-list" class="list"></div>
+          </div>
+          <div class="panel">
+            <div class="panel-head"><h3>Time and billing</h3><span id="invoice-count" class="badge">0</span></div>
+            <form id="time-form" class="form-stack compact">
+              <select id="time-case"></select>
+              <input id="time-description" placeholder="Work description" required minlength="3">
+              <div class="form-row">
+                <input id="time-minutes" type="number" min="1" value="60" placeholder="Minutes">
+                <input id="time-rate" type="number" min="0" value="15000" placeholder="Rate (cents/hour)">
+              </div>
+              <button type="submit" class="btn primary small">Log time</button>
+            </form>
+            <form id="invoice-form" class="form-stack compact">
+              <select id="invoice-client"></select>
+              <select id="invoice-case"></select>
+              <input id="invoice-description" value="Professional services" required minlength="2" placeholder="Item description">
+              <input id="invoice-amount" type="number" min="0" value="1500000" placeholder="Amount (cents)">
+              <button type="submit" class="btn ghost small">Create invoice</button>
+            </form>
+            <div id="invoice-list" class="list"></div>
+            <div id="time-list" class="list"></div>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><h3>BriefCase early access</h3><span class="mono panel-kicker">Waitlist</span></div>
+          <form id="waitlist-form" class="form-row">
+            <input id="wait-name" placeholder="Name" required minlength="2">
+            <input id="wait-email" type="email" placeholder="Email" required>
+            <input id="wait-role" placeholder="Role">
+            <button type="submit" class="btn primary small">Join waitlist</button>
+          </form>
+          <p id="waitlist-status" class="muted"></p>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><h3>Subscription</h3><span class="mono panel-kicker">Current plan</span></div>
+          <div id="subscription" class="result"></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="section-talent" class="section">
+      <div class="section-heading">
+        <p class="eyebrow"><span class="idx mono">03</span>Legal talent</p>
+        <h2>Talent</h2>
+        <p class="muted">Connect advocates, students and firms to internships, roles and showcases.</p>
+      </div>
+      <div class="two-column">
+        <div class="panel">
+          <div class="panel-head"><h3>Open opportunities</h3><span class="mono panel-kicker">Live listings</span></div>
+          <div id="opportunity-list" class="list"></div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><h3>Apply</h3><span class="mono panel-kicker">One application</span></div>
+          <form id="application-form" class="form-stack compact">
+            <select id="application-opportunity"></select>
+            <input id="application-name" placeholder="Full name" required minlength="2">
+            <input id="application-email" type="email" placeholder="Email" required>
+            <textarea id="application-letter" placeholder="Cover letter"></textarea>
+            <button type="submit" class="btn primary small">Submit application</button>
+          </form>
+          <div class="requires-auth sub-block">
+            <div class="panel-head"><h3>Received applications</h3><span class="mono panel-kicker">Tenant</span></div>
+            <div id="application-list" class="list"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="section-education" class="section">
+      <div class="section-heading">
+        <p class="eyebrow"><span class="idx mono">04</span>Legal education</p>
+        <h2>Academy</h2>
+        <p class="muted">Practical learning resources for students, advocates and firms.</p>
+      </div>
+      <div class="two-column">
+        <div class="panel">
+          <div class="panel-head"><h3>Resources</h3><span class="mono panel-kicker">Published</span></div>
+          <div id="resource-list" class="list"></div>
+        </div>
+        <div class="panel requires-auth">
+          <div class="panel-head"><h3>My learning</h3><span class="mono panel-kicker">Enrolled</span></div>
+          <div id="enrollment-list" class="list"></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="section-innovation" class="section">
+      <div class="section-heading">
+        <p class="eyebrow"><span class="idx mono">05</span>Legal business</p>
+        <h2>Innovation</h2>
+        <p class="muted">Submit legal-tech ideas and track review status.</p>
+      </div>
+      <div class="two-column requires-auth">
+        <div class="panel">
+          <div class="panel-head"><h3>Submitted innovations</h3><span class="mono panel-kicker">Pipeline</span></div>
+          <div id="innovation-list" class="list"></div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><h3>Submit an idea</h3><span class="mono panel-kicker">New submission</span></div>
+          <form id="innovation-form" class="form-stack compact">
+            <input id="innovation-title" placeholder="Idea title" required minlength="3">
+            <input id="innovation-sector" placeholder="Sector">
+            <select id="innovation-stage">
+              <option value="idea">Idea</option>
+              <option value="prototype">Prototype</option>
+              <option value="mvp">MVP</option>
+              <option value="launch">Launch</option>
+            </select>
+            <textarea id="innovation-description" placeholder="Description"></textarea>
+            <button type="submit" class="btn primary small">Submit</button>
+          </form>
+        </div>
+      </div>
+    </section>
+
+    <section id="section-platform" class="section">
+      <div class="section-heading">
+        <p class="eyebrow"><span class="idx mono">06</span>Platform operations</p>
+        <h2>Platform</h2>
+        <p class="muted">Health, metrics and audit trails for administrators.</p>
+      </div>
+      <div class="card-grid">
+        <div class="panel">
+          <div class="panel-head"><h3>Health</h3><span class="mono panel-kicker">Public endpoint</span></div>
+          <div id="health" class="result"></div>
+        </div>
+        <div class="panel requires-auth">
+          <div class="panel-head"><h3>Tenant metrics</h3><span class="mono panel-kicker">Aggregates</span></div>
+          <div id="metrics" class="result"></div>
+        </div>
+      </div>
+      <div class="panel requires-auth">
+        <div class="panel-head"><h3>Audit log</h3><span class="mono panel-kicker">Last 100 events</span></div>
+        <div id="audit-list" class="list"></div>
+      </div>
+    </section>
+  </main>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script src="/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,28 @@
+services:
+  app:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      APP_NAME: LegAlly
+      ENVIRONMENT: production
+      DEBUG: "false"
+      SECRET_KEY: ${SECRET_KEY:-replace-with-a-long-random-secret}
+      DATABASE_URL: sqlite:////data/legalally.db
+      CORS_ORIGINS: '["http://localhost:8000"]'
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4o-mini}
+      RATE_LIMIT_PER_MINUTE: ${RATE_LIMIT_PER_MINUTE:-120}
+      LOG_LEVEL: INFO
+    volumes:
+      - legalally-data:/data
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/platform/health').read()"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+
+volumes:
+  legalally-data:
