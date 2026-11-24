@@ -297,6 +297,11 @@ def test_workflow_guides_conflict_tasks_trust_and_fees(client):
     assert receipt.status_code == 200, receipt.text
     assert receipt.json()["balance_cents"] == 500000
 
+    trust_ledger = client.get("/api/workflows/trust", headers=headers)
+    assert trust_ledger.status_code == 200, trust_ledger.text
+    assert trust_ledger.json()[-1]["balance_cents"] == 500000
+    assert trust_ledger.json()[-1]["case_id"] == case_id
+
     overdraw = client.post(
         "/api/workflows/trust",
         headers=headers,

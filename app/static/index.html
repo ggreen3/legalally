@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="theme-color" content="#080a0b">
   <title>LegAlly — One operating system for law in Kenya</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="apple-touch-icon" href="/favicon.svg">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -173,6 +175,45 @@
       </div>
       <div class="requires-auth">
         <div class="stat-grid" id="brief-stats"></div>
+        <div class="firm-command">
+          <div class="panel command-panel">
+            <div class="panel-head"><h3>Firm command</h3><span class="mono panel-kicker">Today</span></div>
+            <div id="firm-today" class="command-stats"></div>
+            <div class="timer-row">
+              <select id="timer-case"></select>
+              <input id="timer-description" placeholder="Billable work description">
+              <button type="button" id="timer-toggle" class="btn primary small">Start timer</button>
+              <span id="timer-display" class="timer-display mono">00:00:00</span>
+              <button type="button" id="timer-discard" class="btn ghost small" hidden>Discard</button>
+            </div>
+          </div>
+          <div class="panel command-panel">
+            <div class="panel-head"><h3>Deadline radar</h3><span id="deadline-count" class="badge">0</span></div>
+            <div id="upcoming-list" class="list"></div>
+          </div>
+          <div class="panel command-panel">
+            <div class="panel-head"><h3>Matter pipeline</h3><span id="pipeline-count" class="badge">0</span></div>
+            <div class="form-row compact-row">
+              <input id="matter-filter" placeholder="Search matters or clients">
+              <select id="matter-status-filter">
+                <option value="">All statuses</option>
+                <option value="active">Active</option>
+                <option value="open">Open</option>
+                <option value="pending">Pending</option>
+                <option value="closed">Closed</option>
+              </select>
+            </div>
+            <div id="matter-pipeline" class="list"></div>
+          </div>
+          <div class="panel command-panel">
+            <div class="panel-head"><h3>Matter workspace</h3><span id="workspace-label" class="mono panel-kicker">Select a matter</span></div>
+            <div id="matter-workspace"><p class="empty">Choose a matter from the pipeline to open its file.</p></div>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><h3>Recent firm activity</h3><span class="mono panel-kicker">Audit trail</span></div>
+          <div id="recent-activity" class="list"></div>
+        </div>
         <div class="two-column">
           <div class="panel">
             <div class="panel-head"><h3>Clients</h3><span id="client-count" class="badge">0</span></div>
@@ -210,6 +251,7 @@
                 <option value="correspondence">Correspondence</option>
               </select>
               <textarea id="doc-content" placeholder="Draft content"></textarea>
+              <div id="doc-preview" class="legal-document" hidden></div>
               <button type="submit" class="btn primary small">Add document</button>
               <button type="button" id="doc-draft-btn" class="btn ghost small">AI draft</button>
             </form>

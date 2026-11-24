@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="LegAlly">
+  <rect width="64" height="64" rx="12" fill="#080a0b"/>
+  <rect x="6" y="6" width="52" height="52" rx="9" fill="none" stroke="#2fe0bd" stroke-width="2"/>
+  <path d="M19 13v38h27v-10H30V13z" fill="#2fe0bd"/>
+  <path d="M19 13h11v28H19z" fill="#e9efee" opacity="0.92"/>
+  <path d="M19 41h27v10H19z" fill="#2fe0bd" opacity="0.55"/>
+</svg>

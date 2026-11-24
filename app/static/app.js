@@ -10,6 +10,11 @@ const state = {
   resources: [],
   guides: [],
   templates: [],
+  tasks: [],
+  trustEntries: [],
+  auditLogs: [],
+  selectedCaseId: null,
+  timer: null,
 };
 
 const $ = (selector) => document.querySelector(selector);
@@ -35,6 +40,73 @@ function escapeHtml(value) {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#039;");
+}
+
+function cleanLegalText(value) {
+  return String(value ?? "")
+    .replace(/\r\n?/g, "\n")
+    .split("\n")
+    .map((line) =>
+      line
+        .trim()
+        .replace(/^#{1,6}\s*/, "")
+        .replace(/^\s*>\s*/, "")
+        .replace(/^\s*[-*+]\s+/, "")
+        .replace(/\*\*|__|`/g, "")
+        .replace(/\*+/g, "")
+        .trim()
+    )
+    .filter(Boolean)
+    .join("\n");
+}
+
+function legalDocumentHtml(value, emptyText = "No text to display.") {
+  const lines = cleanLegalText(value).split("\n").filter(Boolean);
+  if (!lines.length) return `<p class="empty">${escapeHtml(emptyText)}</p>`;
+  const body = lines
+    .map((line) => {
+      if (/^[-=_]{3,}$/.test(line)) return '<div class="legal-rule"></div>';
+      const heading = /^\d+[.)]\s+/.test(line) || (/^[A-Z][A-Z0-9 &,'’\-:]{3,}$/.test(line) && !/[a-z]/.test(line));
+      if (heading) return `<h4>${escapeHtml(line)}</h4>`;
+      return `<p>${escapeHtml(line)}</p>`;
+    })
+    .join("");
+  return `<div class="legal-document">${body}</div>`;
+}
+
+function renderLegalOutput(selector, value, emptyText = "No text to display.") {
+  const el = $(selector);
+  if (!el) return;
+  el.hidden = false;
+  el.innerHTML = legalDocumentHtml(value, emptyText);
+}
+
+function formatDue(dueAt) {
+  if (!dueAt) return { text: "No deadline", level: "" };
+  const date = new Date(dueAt);
+  if (Number.isNaN(date.getTime())) return { text: String(dueAt), level: "" };
+  const diff = date.getTime() - Date.now();
+  const days = Math.ceil(diff / 86400000);
+  if (diff < 0) {
+    const count = Math.max(1, Math.abs(days));
+    return { text: `Overdue by ${count} day${count === 1 ? "" : "s"}`, level: "overdue" };
+  }
+  if (days <= 7) return { text: `Due in ${days} day${days === 1 ? "" : "s"}`, level: "soon" };
+  return { text: date.toLocaleString("en-KE", { dateStyle: "medium", timeStyle: "short" }), level: "" };
+}
+
+function clientName(clientId) {
+  return state.clients.find((row) => row.id === clientId)?.name || "Unassigned client";
+}
+
+function caseTitle(caseId) {
+  return state.cases.find((row) => row.id === caseId)?.title || "Removed matter";
+}
+
+function caseBalance(caseId) {
+  return state.trustEntries
+    .filter((row) => row.case_id === caseId)
+    .reduce((total, row) => total + (row.kind === "receipt" ? row.amount_cents : -row.amount_cents), 0);
 }
 
 function toast(message, kind = "") {
@@ -229,9 +301,181 @@ async function loadCheckbar() {
   }
 }
 
+function renderInvoiceList() {
+  renderItems(
+    "#invoice-list",
+    state.invoices,
+    (row) => {
+      const next = row.status === "draft" ? "sent" : row.status === "sent" ? "paid" : null;
+      const action = next
+        ? `<button type="button" class="btn ghost small invoice-status-btn" data-invoice="${row.id}" data-status="${next}">Mark ${next}</button>`
+        : "";
+      return `<div class="row"><strong>${escapeHtml(row.number)}</strong><span class="badge">${escapeHtml(row.status)}</span></div><div class="meta">${money(row.total_cents)} · ${escapeHtml(clientName(row.client_id))}</div>${action}`;
+    },
+    "No invoices yet."
+  );
+}
+
+function renderMatterWorkspace(caseId) {
+  const el = $("#matter-workspace");
+  const label = $("#workspace-label");
+  if (!el || !label) return;
+  const item = state.cases.find((row) => row.id === caseId);
+  if (!item) {
+    state.selectedCaseId = null;
+    label.textContent = "Select a matter";
+    el.innerHTML = '<p class="empty">Choose a matter from the pipeline to open its file.</p>';
+    return;
+  }
+  label.textContent = item.case_number || `Matter #${item.id}`;
+  const documents = state.documents.filter((row) => row.case_id === item.id);
+  const tasks = state.tasks.filter((row) => row.case_id === item.id && row.status === "open");
+  const time = state.timeEntries.filter((row) => row.case_id === item.id);
+  const invoices = state.invoices.filter((row) => row.case_id === item.id);
+  const trust = state.trustEntries.filter((row) => row.case_id === item.id);
+  const minutes = time.reduce((total, row) => total + Number(row.minutes || 0), 0);
+  const balance = caseBalance(item.id);
+  const nextDeadline = tasks
+    .filter((row) => row.due_at)
+    .sort((a, b) => new Date(a.due_at).getTime() - new Date(b.due_at).getTime())[0];
+  const due = nextDeadline ? formatDue(nextDeadline.due_at) : null;
+  const documentLines = documents.slice(0, 5).map((row) => `<li>${escapeHtml(row.title)} · v${escapeHtml(row.version)}</li>`).join("");
+  const invoiceLines = invoices.slice(0, 5).map((row) => `<li>${escapeHtml(row.number)} · ${escapeHtml(row.status)} · ${money(row.total_cents)}</li>`).join("");
+  el.innerHTML = `
+    <div class="matter-header">
+      <p class="label">${escapeHtml(clientName(item.client_id))}</p>
+      <h4>${escapeHtml(item.title)}</h4>
+      <div class="matter-badges">
+        <span class="badge">${escapeHtml(item.status)}</span>
+        <span class="badge">${documents.length} documents</span>
+        <span class="badge">${minutes} minutes</span>
+        <span class="badge">${invoices.length} invoices</span>
+      </div>
+    </div>
+    <div class="matter-grid">
+      <div class="matter-block">
+        <p class="label">Next deadline</p>
+        <p>${due ? escapeHtml(due.text) : "No open deadline"}</p>
+        <p class="meta">${nextDeadline ? escapeHtml(nextDeadline.title) : "Add a task to track a filing date."}</p>
+      </div>
+      <div class="matter-block">
+        <p class="label">Trust position</p>
+        <p style="color:${balance < 0 ? "var(--danger)" : "var(--accent)"}">${money(balance)}</p>
+        <p class="meta">${trust.length} ledger entr${trust.length === 1 ? "y" : "ies"} · payments blocked on overdraw</p>
+      </div>
+      <div class="matter-block">
+        <p class="label">Documents</p>
+        ${documentLines ? `<ul>${documentLines}</ul>` : '<p class="meta">No documents filed.</p>'}
+      </div>
+      <div class="matter-block">
+        <p class="label">Billing</p>
+        ${invoiceLines ? `<ul>${invoiceLines}</ul>` : '<p class="meta">No invoices raised.</p>'}
+      </div>
+    </div>
+    <div class="matter-actions">
+      <button type="button" class="btn ghost small" data-focus="doc-case">Open document filing</button>
+      <button type="button" class="btn ghost small" data-focus="time-case">Log time</button>
+      <button type="button" class="btn ghost small" data-focus="trust-case">Post trust entry</button>
+      <button type="button" class="btn ghost small" data-focus="task-case">Add deadline</button>
+    </div>`;
+}
+
+function renderFirmCommand() {
+  const now = Date.now();
+  const activeMatters = state.cases.filter((row) => row.status !== "closed").length;
+  const openTasks = state.tasks.filter((row) => row.status === "open").length;
+  const overdue = state.tasks.filter(
+    (row) => row.status === "open" && row.due_at && new Date(row.due_at).getTime() < now
+  ).length;
+  const unbilled = state.timeEntries.reduce(
+    (total, row) => total + (row.billable === false ? 0 : Number(row.minutes || 0)),
+    0
+  );
+  const outstanding = state.invoices.filter((row) => row.status !== "paid" && row.status !== "void").length;
+  const trustHeld = state.cases.reduce((total, row) => total + Math.max(0, caseBalance(row.id)), 0);
+  const stats = [
+    [activeMatters, "active matters"],
+    [openTasks, "open tasks"],
+    [overdue, "overdue"],
+    [unbilled, "minutes logged"],
+    [outstanding, "unpaid invoices"],
+    [money(trustHeld), "trust held"],
+  ];
+  const statsEl = $("#firm-today");
+  if (statsEl) {
+    statsEl.innerHTML = stats
+      .map(([value, label]) => `<div class="command-stat"><strong>${escapeHtml(value)}</strong><span>${escapeHtml(label)}</span></div>`)
+      .join("");
+  }
+
+  const deadlines = state.tasks
+    .filter((row) => row.status === "open")
+    .sort((a, b) => {
+      const left = a.due_at ? new Date(a.due_at).getTime() : Number.MAX_SAFE_INTEGER;
+      const right = b.due_at ? new Date(b.due_at).getTime() : Number.MAX_SAFE_INTEGER;
+      return left - right;
+    });
+  const deadlineCount = $("#deadline-count");
+  if (deadlineCount) deadlineCount.textContent = deadlines.length;
+  const deadlineEl = $("#upcoming-list");
+  if (deadlineEl) {
+    deadlineEl.innerHTML = deadlines.length
+      ? deadlines
+          .slice(0, 8)
+          .map((row) => {
+            const due = formatDue(row.due_at);
+            return `<div class="item deadline-${due.level || "none"}"><div class="row"><strong>${escapeHtml(row.title)}</strong><span class="badge">${escapeHtml(row.priority)}</span></div><div class="meta">${escapeHtml(caseTitle(row.case_id))} · ${escapeHtml(due.text)}</div></div>`;
+          })
+          .join("")
+      : '<p class="empty">No open deadlines.</p>';
+  }
+
+  const query = ($("#matter-filter")?.value || "").toLowerCase();
+  const status = $("#matter-status-filter")?.value || "";
+  const matters = state.cases.filter((row) => {
+    const haystack = `${row.title} ${row.case_number || ""} ${clientName(row.client_id)}`.toLowerCase();
+    return haystack.includes(query) && (!status || row.status === status);
+  });
+  const pipelineCount = $("#pipeline-count");
+  if (pipelineCount) pipelineCount.textContent = matters.length;
+  const pipelineEl = $("#matter-pipeline");
+  if (pipelineEl) {
+    pipelineEl.innerHTML = matters.length
+      ? matters
+          .map((row) => {
+            const next = state.tasks
+              .filter((task) => task.case_id === row.id && task.status === "open" && task.due_at)
+              .sort((a, b) => new Date(a.due_at).getTime() - new Date(b.due_at).getTime())[0];
+            const due = next ? formatDue(next.due_at) : { text: "No deadline" };
+            const docs = state.documents.filter((doc) => doc.case_id === row.id).length;
+            const minutes = state.timeEntries
+              .filter((entry) => entry.case_id === row.id)
+              .reduce((total, entry) => total + Number(entry.minutes || 0), 0);
+            return `<div class="item"><button type="button" class="matter-row" data-open-matter="${row.id}"><div class="row"><strong>${escapeHtml(row.title)}</strong><span class="badge">${escapeHtml(row.status)}</span></div><div class="meta">${escapeHtml(clientName(row.client_id))} · ${escapeHtml(row.case_number || "No case number")}</div><div class="meta">${escapeHtml(due.text)} · ${docs} docs · ${minutes} minutes · ${money(caseBalance(row.id))} trust</div></button></div>`;
+          })
+          .join("")
+      : '<p class="empty">No matters match this filter.</p>';
+  }
+
+  renderMatterWorkspace(state.selectedCaseId);
+  renderItems(
+    "#recent-activity",
+    state.auditLogs.slice(0, 8),
+    (row) => `<strong>${escapeHtml(row.action)}</strong><div class="meta">${escapeHtml(row.entity)} · ${escapeHtml(row.created_at)}</div>`,
+    "No activity recorded."
+  );
+  renderInvoiceList();
+
+  const timerSelect = $("#timer-case");
+  if (timerSelect) {
+    fillSelect("#timer-case", state.cases, "Select matter", (row) => row.title);
+    if (state.selectedCaseId) timerSelect.value = String(state.selectedCaseId);
+  }
+}
+
 async function loadBriefcase() {
   try {
-    const [stats, clients, cases, documents, invoices, timeEntries, subscription] = await Promise.all([
+    const [stats, clients, cases, documents, invoices, timeEntries, subscription, tasks, trustEntries, auditLogs] = await Promise.all([
       api("/api/briefcase/overview"),
       api("/api/briefcase/clients"),
       api("/api/briefcase/cases"),
@@ -239,12 +483,18 @@ async function loadBriefcase() {
       api("/api/briefcase/invoices"),
       api("/api/briefcase/time-entries"),
       api("/api/briefcase/subscription"),
+      api("/api/workflows/tasks"),
+      api("/api/workflows/trust"),
+      api("/api/platform/audit-logs"),
     ]);
     state.clients = clients;
     state.cases = cases;
     state.documents = documents;
     state.invoices = invoices;
     state.timeEntries = timeEntries;
+    state.tasks = tasks;
+    state.trustEntries = trustEntries;
+    state.auditLogs = auditLogs;
 
     $("#brief-stats").innerHTML = Object.entries(stats)
       .map(([key, value]) => `<div class="stat"><strong>${escapeHtml(value)}</strong><span>${escapeHtml(key.replaceAll("_", " "))}</span></div>`)
@@ -261,14 +511,94 @@ async function loadBriefcase() {
     fillSelect("#invoice-case", cases, "No matter", (row) => row.title);
 
     renderItems("#client-list", clients, (row) => `<strong>${escapeHtml(row.name)}</strong><div class="meta">${escapeHtml(row.email || row.phone || "No contact details")}</div>`);
-    renderItems("#case-list", cases, (row) => `<div class="row"><strong>${escapeHtml(row.title)}</strong><span class="badge">${escapeHtml(row.status)}</span></div><div class="meta">${escapeHtml(row.case_number || row.category)}</div>`);
+    renderItems("#case-list", cases, (row) => `<button type="button" class="matter-row" data-open-matter="${row.id}"><div class="row"><strong>${escapeHtml(row.title)}</strong><span class="badge">${escapeHtml(row.status)}</span></div><div class="meta">${escapeHtml(row.case_number || row.category)}</div></button>`);
     renderItems("#doc-list", documents, (row) => `<strong>${escapeHtml(row.title)}</strong><div class="meta">${escapeHtml(row.doc_type)} · v${escapeHtml(row.version)}</div>`);
-    renderItems("#invoice-list", invoices, (row) => `<div class="row"><strong>${escapeHtml(row.number)}</strong><span class="badge">${escapeHtml(row.status)}</span></div><div class="meta">${money(row.total_cents)}</div>`);
     renderItems("#time-list", timeEntries, (row) => `<div class="row"><strong>${escapeHtml(row.description)}</strong><span class="meta">${escapeHtml(row.minutes)} min</span></div>`);
     $("#subscription").innerHTML = `<p><strong>${escapeHtml(subscription.tier)}</strong> · ${escapeHtml(subscription.status)}</p><p class="muted">${money(subscription.monthly_price_cents)} per month</p>`;
+    renderFirmCommand();
   } catch (error) {
     toast(error.message, "error");
   }
+}
+
+function openMatter(caseId) {
+  state.selectedCaseId = Number(caseId);
+  ["#doc-case", "#time-case", "#invoice-case", "#trust-case", "#task-case", "#timer-case"].forEach((selector) => {
+    const el = $(selector);
+    if (el) el.value = String(state.selectedCaseId);
+  });
+  renderFirmCommand();
+  $("#matter-workspace")?.scrollIntoView({ behavior: "smooth", block: "center" });
+}
+
+function updateTimerDisplay() {
+  const display = $("#timer-display");
+  if (!display) return;
+  if (!state.timer) {
+    display.textContent = "00:00:00";
+    return;
+  }
+  const total = Math.max(0, Math.floor((Date.now() - state.timer.startedAt) / 1000));
+  const hours = String(Math.floor(total / 3600)).padStart(2, "0");
+  const minutes = String(Math.floor((total % 3600) / 60)).padStart(2, "0");
+  const seconds = String(total % 60).padStart(2, "0");
+  display.textContent = `${hours}:${minutes}:${seconds}`;
+}
+
+function clearTimer() {
+  if (state.timer?.interval) clearInterval(state.timer.interval);
+  state.timer = null;
+  const button = $("#timer-toggle");
+  if (button) button.textContent = "Start timer";
+  const discard = $("#timer-discard");
+  if (discard) discard.hidden = true;
+  updateTimerDisplay();
+}
+
+async function stopTimer() {
+  if (!state.timer) return;
+  const timer = state.timer;
+  if (timer.interval) clearInterval(timer.interval);
+  const minutes = Math.max(1, Math.round((Date.now() - timer.startedAt) / 60000));
+  try {
+    await api("/api/briefcase/time-entries", {
+      method: "POST",
+      body: JSON.stringify({
+        case_id: timer.caseId,
+        description: timer.description,
+        minutes,
+        rate_cents: 1500000,
+      }),
+    });
+    toast(`Logged ${minutes} minutes.`, "success");
+    clearTimer();
+    await loadBriefcase();
+  } catch (error) {
+    timer.interval = setInterval(updateTimerDisplay, 1000);
+    toast(error.message, "error");
+  }
+}
+
+function toggleTimer() {
+  if (state.timer) {
+    stopTimer();
+    return;
+  }
+  const caseId = Number($("#timer-case")?.value);
+  if (!caseId) {
+    toast("Choose a matter before starting the timer.", "error");
+    return;
+  }
+  const description = $("#timer-description").value.trim() || "Billable work";
+  state.timer = {
+    caseId,
+    description,
+    startedAt: Date.now(),
+    interval: setInterval(updateTimerDisplay, 1000),
+  };
+  $("#timer-toggle").textContent = "Stop & log";
+  $("#timer-discard").hidden = false;
+  updateTimerDisplay();
 }
 
 function sourceLinks(sources) {
@@ -318,7 +648,7 @@ async function loadGuides() {
 async function loadWorkflows() {
   if (!state.user) return;
   try {
-    const [templates, conflictChecks, cddRecords, tasks, cpdRecords, clients, cases] = await Promise.all([
+    const [templates, conflictChecks, cddRecords, tasks, cpdRecords, clients, cases, trustEntries] = await Promise.all([
       api("/api/workflows/templates"),
       api("/api/workflows/conflict-checks"),
       api("/api/workflows/cdd"),
@@ -326,10 +656,13 @@ async function loadWorkflows() {
       api("/api/workflows/cpd"),
       api("/api/briefcase/clients"),
       api("/api/briefcase/cases"),
+      api("/api/workflows/trust"),
     ]);
     state.templates = templates;
     state.clients = clients;
     state.cases = cases;
+    state.tasks = tasks;
+    state.trustEntries = trustEntries;
     $("#template-select").innerHTML = templates.map((row) => option(row.key, row.title)).join("");
     fillSelect("#cdd-client", state.clients, "Select client", (row) => row.name);
     fillSelect("#task-case", state.cases, "Select matter", (row) => row.title);
@@ -361,12 +694,10 @@ async function loadWorkflows() {
       "No CPD records yet."
     );
 
-    const caseId = state.cases[0]?.id;
-    const trustRows = caseId ? await api(`/api/workflows/trust/${caseId}`) : [];
     renderItems(
       "#trust-list",
-      trustRows,
-      (row) => `<div class="row"><strong>${escapeHtml(row.kind)} · ${money(row.amount_cents)}</strong><span class="meta">${money(row.balance_cents)}</span></div><div class="meta">${escapeHtml(row.reference || row.posted_by || "No reference")}</div>`,
+      trustEntries,
+      (row) => `<div class="row"><strong>${escapeHtml(row.kind)} · ${money(row.amount_cents)}</strong><span class="meta">${money(row.balance_cents)}</span></div><div class="meta">${escapeHtml(caseTitle(row.case_id))} · ${escapeHtml(row.reference || row.posted_by || "No reference")}</div>`,
       "No trust entries yet."
     );
   } catch (error) {
@@ -477,7 +808,7 @@ function setCheckStreamStatus(text, mode = "") {
 function beginAnswer() {
   const panel = $("#check-answer");
   panel.classList.add("streaming");
-  panel.innerHTML = '<span id="check-answer-text"></span><span class="caret" aria-hidden="true"></span>';
+  panel.innerHTML = '<div id="check-answer-text"></div><span class="caret" aria-hidden="true"></span>';
   $("#check-citations").innerHTML = "";
   $("#check-disclaimer").textContent = CHECKBAR_DISCLAIMER;
 }
@@ -491,14 +822,14 @@ function finishAnswer(answer, provider) {
   const panel = $("#check-answer");
   panel.classList.remove("streaming");
   const el = $("#check-answer-text");
-  if (el) el.textContent = answer;
+  if (el) el.innerHTML = legalDocumentHtml(answer, "No answer generated.");
   setCheckStreamStatus(`Pico / ${String(provider || "ready")}`, "done");
 }
 
 function renderCheckResult(result) {
   const panel = $("#check-answer");
   panel.classList.remove("streaming");
-  panel.textContent = result.answer;
+  panel.innerHTML = legalDocumentHtml(result.answer, "No answer generated.");
   $("#check-disclaimer").textContent = result.disclaimer;
   $("#check-citations").innerHTML = (result.citations || [])
     .map((citation) => `<span class="citation">${escapeHtml(citation.source)} ${escapeHtml(citation.section || "")}</span>`)
@@ -731,12 +1062,65 @@ function wireEvents() {
     case_number: $("#case-number").value.trim() || null,
   }), "Matter added.", loadBriefcase);
 
+  $("#matter-pipeline").addEventListener("click", (event) => {
+    const button = event.target.closest("[data-open-matter]");
+    if (button) openMatter(button.dataset.openMatter);
+  });
+
+  $("#case-list").addEventListener("click", (event) => {
+    const button = event.target.closest("[data-open-matter]");
+    if (button) openMatter(button.dataset.openMatter);
+  });
+
+  $("#matter-workspace").addEventListener("click", (event) => {
+    const button = event.target.closest("[data-focus]");
+    if (!button || !state.selectedCaseId) return;
+    const target = $(`#${button.dataset.focus}`);
+    if (!target) return;
+    target.value = String(state.selectedCaseId);
+    target.scrollIntoView({ behavior: "smooth", block: "center" });
+    target.focus();
+  });
+
+  $("#matter-filter").addEventListener("input", renderFirmCommand);
+  $("#matter-status-filter").addEventListener("change", renderFirmCommand);
+  $("#timer-toggle").addEventListener("click", toggleTimer);
+  $("#timer-discard").addEventListener("click", () => {
+    clearTimer();
+    toast("Timer discarded.");
+  });
+
+  $("#invoice-list").addEventListener("click", async (event) => {
+    const button = event.target.closest(".invoice-status-btn");
+    if (!button) return;
+    try {
+      await api(`/api/briefcase/invoices/${button.dataset.invoice}/status?status=${button.dataset.status}`, {
+        method: "PATCH",
+      });
+      toast(`Invoice marked ${button.dataset.status}.`, "success");
+      await loadBriefcase();
+    } catch (error) {
+      toast(error.message, "error");
+    }
+  });
+
+  $("#doc-content").addEventListener("input", () => {
+    const preview = $("#doc-preview");
+    const value = cleanLegalText($("#doc-content").value);
+    preview.hidden = !value;
+    preview.innerHTML = legalDocumentHtml(value, "Start drafting to preview the document.");
+  });
+
   submitForm("#doc-form", "/api/briefcase/documents", () => ({
     title: $("#doc-title").value.trim(),
     case_id: Number($("#doc-case").value) || null,
     doc_type: $("#doc-type").value,
     content: $("#doc-content").value.trim() || null,
-  }), "Document added.", loadBriefcase);
+  }), "Document added.", async () => {
+    $("#doc-preview").hidden = true;
+    $("#doc-preview").innerHTML = "";
+    await loadBriefcase();
+  });
 
   $("#doc-draft-btn").addEventListener("click", async () => {
     const button = $("#doc-draft-btn");
@@ -748,7 +1132,10 @@ function wireEvents() {
         `Draft a ${$("#doc-type").value} document titled "${$("#doc-title").value.trim() || "Legal document"}" for a Kenyan client. Include all essential clauses and a signature block.`,
         { document_type: $("#doc-type").value, case_id: $("#doc-case").value || null }
       );
-      $("#doc-content").value = result.answer;
+      $("#doc-content").value = cleanLegalText(result.answer);
+      const preview = $("#doc-preview");
+      preview.hidden = false;
+      preview.innerHTML = legalDocumentHtml($("#doc-content").value, "No draft to preview.");
       toast("AI draft ready.", "success");
     } catch (error) {
       toast(error.message, "error");
@@ -771,7 +1158,7 @@ function wireEvents() {
         `Prepare a concise case strategy brief for the Kenyan matter "${$("#case-title").value.trim() || "Untitled matter"}" (${$("#case-number").value.trim() || "no case number"}). Include issues, evidence, risks, next steps and likely outcomes.`,
         { client_id: $("#case-client").value || null, case_number: $("#case-number").value.trim() || null }
       );
-      output.textContent = result.answer;
+      renderLegalOutput("#case-brief-output", result.answer, "No case brief generated.");
       toast("Case brief ready.", "success");
     } catch (error) {
       output.textContent = error.message;
@@ -943,7 +1330,7 @@ function wireEvents() {
         method: "POST",
         body: JSON.stringify({ values, case_id: Number($("#doc-case").value) || null }),
       });
-      output.textContent = `${result.draft}\n\nNOTICE: ${result.notice}`;
+      renderLegalOutput("#template-output", `${cleanLegalText(result.draft)}\n\nNOTICE: ${result.notice}`, "No draft generated.");
       pendingVerificationId = result.output_id;
       verifyButton.hidden = false;
       toast("Draft ready for review.", "success");

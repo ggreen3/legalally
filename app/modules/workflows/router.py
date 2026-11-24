@@ -531,6 +531,27 @@ def post_trust_transaction(
     return trust_out(transaction, balance)
 
 
+@router.get("/trust", response_model=list[TrustOut])
+def list_all_trust_transactions(
+    db: Session = Depends(get_db),
+    tenant_id: int = Depends(get_tenant_id),
+) -> list[TrustOut]:
+    rows = (
+        db.query(TrustTransaction)
+        .filter(TrustTransaction.tenant_id == tenant_id)
+        .order_by(TrustTransaction.case_id.asc(), TrustTransaction.created_at.asc())
+        .all()
+    )
+    balances: dict[int, int] = {}
+    results: list[TrustOut] = []
+    for row in rows:
+        balance = balances.get(row.case_id, 0)
+        balance = balance + row.amount_cents if row.kind == "receipt" else balance - row.amount_cents
+        balances[row.case_id] = balance
+        results.append(trust_out(row, balance))
+    return results
+
+
 @router.get("/trust/{case_id}", response_model=list[TrustOut])
 def list_trust_transactions(
     case_id: int,
