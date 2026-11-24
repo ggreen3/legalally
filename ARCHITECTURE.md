@@ -44,7 +44,7 @@ Core entities in `app/models.py`:
 - Access and drafting content: `LegalGuide`, `DraftTemplate`
 - Ecosystem: `Opportunity`, `Application`, `Resource`, `Enrollment`, `Innovation`
 
-SQLite is the development default. On Vercel, the default is `sqlite:////tmp/legalally.db` to avoid write failures on the read-only function filesystem; this fallback is ephemeral. The SQLAlchemy engine in `app/db.py` accepts any SQLAlchemy-compatible `DATABASE_URL`; production should use PostgreSQL through the same interface. Startup calls `init_db()` and `seed_db()` so fresh environments have demo identities and the seeded guide/template library.
+SQLite is the development default. Production uses the Neon `DATABASE_URL` injected by the Vercel integration (`legalally-prod-db`, Neon ID `polished-dust-98711532`) through the same SQLAlchemy interface in `app/db.py`. If `DATABASE_URL` is absent and Vercel injects `VERCEL=1`, the default is `sqlite:////tmp/legalally.db` to avoid write failures on the read-only function filesystem; that fallback is ephemeral and only a safety net. Startup calls `init_db()` and `seed_db()` so fresh environments have demo identities and the seeded guide/template library.
 
 ## Checkbar design
 

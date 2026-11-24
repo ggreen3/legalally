@@ -108,7 +108,7 @@ These workflows are authenticated and tenant-isolated where they contain client 
 
 ## Vercel
 
-`vercel.json`, `.vercelignore` and `.python-version` are included. Pushing to `main` triggers a Vercel deployment for the connected GitHub repository at `https://github.com/ggreen3/legalally`. When Vercel injects `VERCEL=1`, the default database is `sqlite:////tmp/legalally.db` so cold starts do not fail on the read-only function filesystem; this is ephemeral and is only a fallback. For persistent production data, set `DATABASE_URL` to a pooled Postgres URL (for example from the Neon/Vercel Marketplace). Startup runs `init_db()` and `seed_db()` so a fresh environment has demo users and seeded guides/templates. Required environment variables are listed in `.env.example`.
+`vercel.json`, `.vercelignore` and `.python-version` are included. Pushing to `main` triggers a Vercel deployment for the connected GitHub repository at `https://github.com/ggreen3/legalally`. Production uses the `DATABASE_URL` injected by the Neon integration on the Vercel project (`legalally-prod-db`, Neon ID `polished-dust-98711532`) for persistent pooled Postgres data. If `DATABASE_URL` is absent and Vercel injects `VERCEL=1`, the default is `sqlite:////tmp/legalally.db` so cold starts do not fail on the read-only function filesystem; that fallback is ephemeral and is only for local preview smoke tests. Startup runs `init_db()` and `seed_db()` so a fresh environment has demo users and seeded guides/templates. Required environment variables are listed in `.env.example`.
 
 ## Project layout
 
