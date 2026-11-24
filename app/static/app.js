@@ -116,6 +116,16 @@ function showSection(name) {
   $$(".section").forEach((section) => section.classList.toggle("active", section.id === `section-${name}`));
   $$(".nav button").forEach((button) => button.classList.toggle("active", button.dataset.nav === name));
   window.scrollTo({ top: 0, behavior: "smooth" });
+  if (!state.user) return;
+  const refresh = {
+    checkbar: loadCheckbar,
+    briefcase: () => Promise.allSettled([loadBriefcase(), loadWorkflows()]),
+    talent: loadTalent,
+    education: loadEducation,
+    innovation: loadInnovation,
+    platform: loadPlatformPrivate,
+  }[name];
+  if (refresh) refresh();
 }
 
 function option(value, label = value) {
