@@ -14,8 +14,19 @@ from . import models  # noqa: F401
 from .config import settings
 from .db import init_db
 from .errors import register_error_handlers
-from .modules import ai, auth, briefcase, checkbar, education, innovation, platform, talent
+from .modules import (
+    ai,
+    auth,
+    briefcase,
+    checkbar,
+    education,
+    innovation,
+    platform,
+    talent,
+    workflows,
+)
 from .security import rate_limiter
+from .seed import seed_db
 
 logging.basicConfig(level=getattr(logging, settings.log_level.upper(), logging.INFO))
 logger = logging.getLogger("legalally")
@@ -24,6 +35,7 @@ logger = logging.getLogger("legalally")
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     init_db()
+    seed_db()
     logger.info("%s started in %s mode", settings.app_name, settings.environment)
     yield
     logger.info("%s stopped", settings.app_name)
@@ -74,6 +86,7 @@ app.include_router(talent.router, prefix="/api/talent", tags=["talent"])
 app.include_router(education.router, prefix="/api/education", tags=["education"])
 app.include_router(innovation.router, prefix="/api/innovation", tags=["innovation"])
 app.include_router(platform.router, prefix="/api/platform", tags=["platform"])
+app.include_router(workflows.router, prefix="/api/workflows", tags=["workflows"])
 
 static_dir = Path(__file__).parent / "static"
 app.mount("/", StaticFiles(directory=static_dir, html=True), name="web")

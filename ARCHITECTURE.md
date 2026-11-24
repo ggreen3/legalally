@@ -40,9 +40,11 @@ Core entities in `app/models.py`:
 - Identity and tenancy: `Tenant`, `User`, `AuditLog`, `Subscription`
 - Checkbar: `CheckbarQuery`
 - BriefCase: `Client`, `LegalCase`, `Document`, `TimeEntry`, `Invoice`, `InvoiceItem`, `Waitlist`
+- Practice controls: `MatterTask`, `ConflictCheck`, `CddRecord`, `TrustTransaction`, `AiOutput`, `CpdRecord`
+- Access and drafting content: `LegalGuide`, `DraftTemplate`
 - Ecosystem: `Opportunity`, `Application`, `Resource`, `Enrollment`, `Innovation`
 
-SQLite is the development default. The SQLAlchemy engine in `app/db.py` accepts any SQLAlchemy-compatible `DATABASE_URL`; production should use PostgreSQL through the same interface.
+SQLite is the development default. On Vercel, the default is `sqlite:////tmp/legalally.db` to avoid write failures on the read-only function filesystem; this fallback is ephemeral. The SQLAlchemy engine in `app/db.py` accepts any SQLAlchemy-compatible `DATABASE_URL`; production should use PostgreSQL through the same interface. Startup calls `init_db()` and `seed_db()` so fresh environments have demo identities and the seeded guide/template library.
 
 ## Checkbar design
 
@@ -61,11 +63,25 @@ No API key is exposed to the browser.
 
 `app/modules/checkbar/router.py` exposes `/api/checkbar/stream`. It authenticates from the `token` query parameter or first frame, validates the question with `AskRequest`, relays chunks as `{ type: "chunk", text }`, persists the final answer as provider `pico`, emits `{ type: "done", id, provider }`, and logs `checkbar.stream`. Timeouts and provider errors emit `{ type: "error", message }`; the browser falls back to the non-streaming `POST /api/checkbar/ask`.
 
-`app/modules/ai/router.py` reuses the same transport for document drafting, case strategy and legal companion presets via three Pico app IDs from the original prototype. App IDs are configuration, not secrets. All AI calls are authenticated, rate limited and audited.
+`app/modules/ai/router.py` reuses the same transport for document drafting, case strategy and legal companion presets via three Pico app IDs from the original prototype. App IDs are configuration, not secrets. All AI calls are authenticated, rate limited, persisted as `AiOutput`, and audited. `app/modules/workflows/router.py` adds template drafting and `POST /api/workflows/ai/{output_id}/verify` so a human can record that an AI draft was reviewed.
 
 ## BriefCase design
 
 BriefCase exposes resources for clients, matters, documents, billable time and invoices. Invoice creation calculates `total_cents` from line items and generates a unique invoice number. Status changes are constrained by a query pattern. All list and detail queries are scoped by `tenant_id`.
+
+## Research-backed workflows
+
+`app/modules/workflows/router.py` adds the practical layer on top of BriefCase:
+
+- Public `LegalGuide` endpoints return researched checklists with source links and warnings.
+- Conflict screening compares distinctive name tokens across tenant clients, matters and prior checks, then stores the result with an explicit scope disclaimer.
+- CDD records are upserted per client and only become `complete` when the four required checks are true.
+- Matter tasks carry deadlines, priority, owner and source so court dates are not left in chat threads or paper diaries.
+- Trust postings compute a running balance and reject payments that would overdraw a client matter.
+- Fee estimates calculate fees, disbursements and VAT with a warning to verify the current remuneration order and tax rules.
+- Template drafting preserves unresolved placeholders and requires a separate human verification step.
+
+All client-bearing endpoints derive `tenant_id` from the authenticated user and write audit events.
 
 ## Ecosystem modules
 
@@ -86,7 +102,7 @@ BriefCase exposes resources for clients, matters, documents, billable time and i
 
 `tests/conftest.py` points `DATABASE_URL` at an isolated temporary SQLite file before importing the app. Each test drops and recreates schema, resets the rate limiter and uses `TestClient`.
 
-Coverage includes public endpoints, authentication lifecycle, validation errors, Checkbar answers, BriefCase tenant isolation and billing, Talent applications, Academy progress, Innovation review, platform metrics, audit logs and static client delivery.
+Coverage includes public endpoints, authentication lifecycle, validation errors, Checkbar answers, BriefCase tenant isolation and billing, conflict checks, task status changes, trust overdraw protection, fee estimates, template drafting with a mocked Pico transport, AI verification, Talent applications, Academy progress, Innovation review, platform metrics, audit logs and static client delivery.
 
 ## Production hardening checklist
 

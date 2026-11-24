@@ -234,6 +234,117 @@ def test_platform_metrics_and_audit_logs(client):
     assert any(log["action"] == "briefcase.client.create" for log in logs.json())
 
 
+def test_workflow_guides_conflict_tasks_trust_and_fees(client):
+    guides = client.get("/api/workflows/guides")
+    assert guides.status_code == 200
+    assert {guide["key"] for guide in guides.json()} >= {"nlas-eligibility", "e-filing-deadlines"}
+    assert any(guide["audience"] == "client" for guide in guides.json())
+
+    headers = register(client, "workflow@example.com", "Workflow Firm")
+    created_client = client.post(
+        "/api/briefcase/clients",
+        headers=headers,
+        json={"name": "Acme Limited", "email": "acme@example.com"},
+    )
+    assert created_client.status_code == 201, created_client.text
+    client_id = created_client.json()["id"]
+
+    conflict = client.post(
+        "/api/workflows/conflict-check",
+        headers=headers,
+        json={"client_name": "New Acme", "adverse_parties": ["Acme Ltd"], "matter_title": "Acme dispute"},
+    )
+    assert conflict.status_code == 200, conflict.text
+    assert conflict.json()["status"] == "review"
+    assert conflict.json()["result"]["client_hits"]
+
+    created_case = client.post(
+        "/api/briefcase/cases",
+        headers=headers,
+        json={"title": "Acme services dispute", "client_id": client_id, "case_number": "LA-2026-100"},
+    )
+    assert created_case.status_code == 201, created_case.text
+    case_id = created_case.json()["id"]
+
+    task = client.post(
+        "/api/workflows/tasks",
+        headers=headers,
+        json={
+            "case_id": case_id,
+            "title": "File response",
+            "due_at": "2026-12-01T17:00:00",
+            "priority": "critical",
+            "category": "filing",
+        },
+    )
+    assert task.status_code == 201, task.text
+    assert task.json()["status"] == "open"
+    task_id = task.json()["id"]
+
+    done = client.patch(
+        f"/api/workflows/tasks/{task_id}",
+        headers=headers,
+        json={"status": "done"},
+    )
+    assert done.status_code == 200
+    assert done.json()["status"] == "done"
+
+    receipt = client.post(
+        "/api/workflows/trust",
+        headers=headers,
+        json={"case_id": case_id, "client_id": client_id, "kind": "receipt", "amount_cents": 500000},
+    )
+    assert receipt.status_code == 200, receipt.text
+    assert receipt.json()["balance_cents"] == 500000
+
+    overdraw = client.post(
+        "/api/workflows/trust",
+        headers=headers,
+        json={"case_id": case_id, "client_id": client_id, "kind": "payment", "amount_cents": 600000},
+    )
+    assert overdraw.status_code == 409
+
+    fee = client.post(
+        "/api/workflows/fees/calculate",
+        headers=headers,
+        json={"hours": 2.5, "hourly_rate_cents": 1500000, "disbursements_cents": 50000},
+    )
+    assert fee.status_code == 200, fee.text
+    assert fee.json()["fees_cents"] == 3750000
+    assert fee.json()["total_cents"] == 4104000
+
+
+def test_template_draft_and_verification_with_mocked_pico(client, monkeypatch):
+    import importlib
+
+    workflow_router = importlib.import_module("app.modules.workflows.router")
+
+    async def fake_stream(app_id, prompt, on_chunk):
+        assert app_id
+        assert "template:" in prompt.lower()
+        return "DRAFTED ENGAGEMENT LETTER"
+
+    monkeypatch.setattr(workflow_router, "stream_pico", fake_stream)
+    headers = register(client, "template@example.com", "Template Firm")
+    draft = client.post(
+        "/api/workflows/templates/engagement-letter/draft",
+        headers=headers,
+        json={"values": {"client_name": "Jane Doe", "matter": "Contract review"}},
+    )
+    assert draft.status_code == 200, draft.text
+    assert draft.json()["draft"] == "DRAFTED ENGAGEMENT LETTER"
+    output_id = draft.json()["output_id"]
+
+    verify = client.post(
+        f"/api/workflows/ai/{output_id}/verify",
+        headers=headers,
+        json={"verified_by": "Advocate Reviewer", "note": "Checked facts and placeholders"},
+    )
+    assert verify.status_code == 200, verify.text
+    assert verify.json()["verified_by"] == "Advocate Reviewer"
+    assert verify.json()["verified_at"]
+
+
 def test_static_ui_served(client):
     response = client.get("/")
     assert response.status_code == 200

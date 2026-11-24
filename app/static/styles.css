@@ -1232,3 +1232,90 @@ main {
     animation: none !important;
   }
 }
+
+.check {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  color: var(--text-dim);
+  font-size: 13px;
+}
+
+.check input {
+  accent-color: var(--accent);
+}
+
+.guide-list .item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.guide-btn {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+}
+
+.guide-btn:hover {
+  color: var(--accent);
+}
+
+.guide-detail ol,
+.guide-detail ul {
+  margin: 12px 0;
+  padding-left: 22px;
+}
+
+.guide-detail li {
+  margin: 6px 0;
+}
+
+.guide-detail a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.guide-detail a:hover {
+  text-decoration: underline;
+}
+
+.guide-detail .warn {
+  color: var(--warn);
+}
+
+.guide-detail .swahili {
+  color: var(--text-dim);
+  font-style: italic;
+}
+
+.source-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.source-links a {
+  padding: 5px 9px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--surface-3);
+  color: var(--text-dim);
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  text-decoration: none;
+  text-transform: uppercase;
+}
+
+.source-links a:hover {
+  border-color: var(--accent);
+  color: var(--accent);
+}

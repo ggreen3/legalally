@@ -207,3 +207,102 @@ class Innovation(TimestampMixin, Base):
     stage: Mapped[str] = mapped_column(String(50), default="idea")
     submitted_by: Mapped[str | None] = mapped_column(String(200), nullable=True)
     status: Mapped[str] = mapped_column(String(30), default="submitted")
+
+
+class MatterTask(TimestampMixin, Base):
+    __tablename__ = "matter_tasks"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    tenant_id: Mapped[int] = mapped_column(Integer, index=True)
+    case_id: Mapped[int] = mapped_column(ForeignKey("cases.id"), index=True)
+    title: Mapped[str] = mapped_column(String(200))
+    description: Mapped[str | None] = mapped_column(Text, nullable=True)
+    due_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True, index=True)
+    status: Mapped[str] = mapped_column(String(30), default="open", index=True)
+    priority: Mapped[str] = mapped_column(String(20), default="normal")
+    category: Mapped[str] = mapped_column(String(60), default="deadline")
+    owner: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    source: Mapped[str | None] = mapped_column(String(200), nullable=True)
+
+
+class ConflictCheck(TimestampMixin, Base):
+    __tablename__ = "conflict_checks"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    tenant_id: Mapped[int] = mapped_column(Integer, index=True)
+    user_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    client_name: Mapped[str] = mapped_column(String(200))
+    adverse_parties: Mapped[list[str]] = mapped_column(JSON, default=list)
+    result: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    status: Mapped[str] = mapped_column(String(30), default="review")
+
+
+class CddRecord(TimestampMixin, Base):
+    __tablename__ = "cdd_records"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    tenant_id: Mapped[int] = mapped_column(Integer, index=True)
+    client_id: Mapped[int] = mapped_column(ForeignKey("clients.id"), index=True)
+    status: Mapped[str] = mapped_column(String(30), default="incomplete")
+    risk_tier: Mapped[str] = mapped_column(String(30), default="standard")
+    checklist: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    reviewed_by: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    reviewed_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+
+class TrustTransaction(TimestampMixin, Base):
+    __tablename__ = "trust_transactions"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    tenant_id: Mapped[int] = mapped_column(Integer, index=True)
+    case_id: Mapped[int] = mapped_column(ForeignKey("cases.id"), index=True)
+    client_id: Mapped[int] = mapped_column(ForeignKey("clients.id"), index=True)
+    kind: Mapped[str] = mapped_column(String(30))
+    amount_cents: Mapped[int] = mapped_column(Integer)
+    reference: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    posted_by: Mapped[str | None] = mapped_column(String(120), nullable=True)
+
+
+class AiOutput(TimestampMixin, Base):
+    __tablename__ = "ai_outputs"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    tenant_id: Mapped[int] = mapped_column(Integer, index=True)
+    case_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
+    preset: Mapped[str] = mapped_column(String(50), index=True)
+    prompt: Mapped[str] = mapped_column(Text)
+    output: Mapped[str] = mapped_column(Text)
+    sources: Mapped[list[dict[str, Any]]] = mapped_column(JSON, default=list)
+    disclosure: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    verified_by: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    verified_at: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+
+
+class LegalGuide(TimestampMixin, Base):
+    __tablename__ = "legal_guides"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    key: Mapped[str] = mapped_column(String(100), unique=True, index=True)
+    title: Mapped[str] = mapped_column(String(200))
+    audience: Mapped[str] = mapped_column(String(80), index=True)
+    topic: Mapped[str] = mapped_column(String(100), index=True)
+    summary: Mapped[str] = mapped_column(Text)
+    body: Mapped[dict[str, Any]] = mapped_column(JSON, default=dict)
+    sources: Mapped[list[dict[str, Any]]] = mapped_column(JSON, default=list)
+    last_checked: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(UTC))
+
+
+class DraftTemplate(TimestampMixin, Base):
+    __tablename__ = "draft_templates"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    key: Mapped[str] = mapped_column(String(100), unique=True, index=True)
+    title: Mapped[str] = mapped_column(String(200))
+    category: Mapped[str] = mapped_column(String(80), index=True)
+    body: Mapped[str] = mapped_column(Text)
+    variables: Mapped[list[str]] = mapped_column(JSON, default=list)
+
+
+class CpdRecord(TimestampMixin, Base):
+    __tablename__ = "cpd_records"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    tenant_id: Mapped[int] = mapped_column(Integer, index=True)
+    user_id: Mapped[int] = mapped_column(Integer, index=True)
+    title: Mapped[str] = mapped_column(String(200))
+    provider: Mapped[str | None] = mapped_column(String(200), nullable=True)
+    units: Mapped[int] = mapped_column(Integer, default=1)
+    completed_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(UTC))
+    evidence_url: Mapped[str | None] = mapped_column(String(300), nullable=True)

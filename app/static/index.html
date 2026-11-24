@@ -24,7 +24,8 @@
         <button type="button" data-nav="talent"><span class="nav-idx">03</span>Talent</button>
         <button type="button" data-nav="education"><span class="nav-idx">04</span>Academy</button>
         <button type="button" data-nav="innovation"><span class="nav-idx">05</span>Innovation</button>
-        <button type="button" data-nav="platform"><span class="nav-idx">06</span>Platform</button>
+        <button type="button" data-nav="access"><span class="nav-idx">06</span>Access</button>
+        <button type="button" data-nav="platform"><span class="nav-idx">07</span>Platform</button>
       </nav>
       <div class="authbar">
         <span class="status-cluster">
@@ -236,6 +237,91 @@
             <div id="time-list" class="list"></div>
           </div>
         </div>
+        <div class="two-column requires-auth">
+          <div class="panel">
+            <div class="panel-head"><h3>Conflict and client care</h3><span class="mono panel-kicker">Risk controls</span></div>
+            <form id="conflict-form" class="form-stack compact">
+              <input id="conflict-client" placeholder="Prospective client name" required minlength="2">
+              <input id="conflict-parties" placeholder="Adverse parties, comma separated">
+              <button type="submit" class="btn primary small">Run conflict check</button>
+            </form>
+            <div id="conflict-output" class="result" hidden></div>
+            <form id="cdd-form" class="form-stack compact">
+              <select id="cdd-client"></select>
+              <select id="cdd-risk">
+                <option value="low">Low risk</option>
+                <option value="standard" selected>Standard risk</option>
+                <option value="enhanced">Enhanced risk</option>
+              </select>
+              <label class="check"><input id="cdd-identity" type="checkbox"> Identity verified</label>
+              <label class="check"><input id="cdd-owner" type="checkbox"> Beneficial owner checked</label>
+              <label class="check"><input id="cdd-purpose" type="checkbox"> Purpose recorded</label>
+              <label class="check"><input id="cdd-reason" type="checkbox"> Risk reason recorded</label>
+              <button type="submit" class="btn ghost small">Save CDD record</button>
+            </form>
+            <div id="cdd-list" class="list"></div>
+          </div>
+          <div class="panel">
+            <div class="panel-head"><h3>Deadlines and trust ledger</h3><span class="mono panel-kicker">Daily controls</span></div>
+            <form id="task-form" class="form-stack compact">
+              <select id="task-case"></select>
+              <input id="task-title" placeholder="Task or deadline" required minlength="3">
+              <input id="task-due" type="datetime-local">
+              <select id="task-priority">
+                <option value="normal">Normal</option>
+                <option value="high">High</option>
+                <option value="critical">Critical</option>
+              </select>
+              <button type="submit" class="btn primary small">Add deadline</button>
+            </form>
+            <div id="task-list" class="list"></div>
+            <form id="trust-form" class="form-stack compact">
+              <select id="trust-case"></select>
+              <select id="trust-client"></select>
+              <select id="trust-kind">
+                <option value="receipt">Receipt</option>
+                <option value="payment">Payment</option>
+              </select>
+              <input id="trust-amount" type="number" min="1" value="100000" placeholder="Amount in cents">
+              <input id="trust-reference" placeholder="Reference">
+              <button type="submit" class="btn ghost small">Post entry</button>
+            </form>
+            <div id="trust-list" class="list"></div>
+          </div>
+        </div>
+        <div class="two-column requires-auth">
+          <div class="panel">
+            <div class="panel-head"><h3>Drafting templates</h3><span class="mono panel-kicker">AI assisted</span></div>
+            <form id="template-form" class="form-stack compact">
+              <select id="template-select"></select>
+              <input id="template-client" placeholder="Client name">
+              <input id="template-matter" placeholder="Matter or subject">
+              <input id="template-recipient" placeholder="Recipient or adverse party">
+              <button type="submit" class="btn primary small">Draft from template</button>
+            </form>
+            <div id="template-output" class="result" hidden></div>
+            <button type="button" class="btn ghost small verify-btn" data-verify-output hidden>Mark draft verified</button>
+          </div>
+          <div class="panel">
+            <div class="panel-head"><h3>Fee estimator and CPD</h3><span class="mono panel-kicker">Planning</span></div>
+            <form id="fee-form" class="form-stack compact">
+              <div class="form-row">
+                <input id="fee-hours" type="number" min="0.25" step="0.25" value="2" placeholder="Hours">
+                <input id="fee-rate" type="number" min="1" value="1500000" placeholder="Rate cents/hour">
+              </div>
+              <input id="fee-disbursements" type="number" min="0" value="0" placeholder="Disbursements in cents">
+              <button type="submit" class="btn primary small">Estimate fee</button>
+            </form>
+            <div id="fee-output" class="result" hidden></div>
+            <form id="cpd-form" class="form-stack compact">
+              <input id="cpd-title" placeholder="Course or session" required minlength="3">
+              <input id="cpd-provider" placeholder="Provider">
+              <input id="cpd-units" type="number" min="1" value="1" placeholder="Units">
+              <button type="submit" class="btn ghost small">Add CPD record</button>
+            </form>
+            <div id="cpd-list" class="list"></div>
+          </div>
+        </div>
         <div class="panel">
           <div class="panel-head"><h3>BriefCase early access</h3><span class="mono panel-kicker">Waitlist</span></div>
           <form id="waitlist-form" class="form-row">
@@ -328,9 +414,37 @@
       </div>
     </section>
 
+    <section id="section-access" class="section">
+      <div class="section-heading">
+        <p class="eyebrow"><span class="idx mono">06</span>Access to justice</p>
+        <h2>Practical pathways, not just answers.</h2>
+        <p class="muted">Plain-language checklists built from Kenyan access-to-justice research. General information only — not legal advice.</p>
+      </div>
+      <div class="two-column">
+        <div class="panel">
+          <div class="panel-head"><h3>Pathway library</h3><span class="mono panel-kicker">Open access</span></div>
+          <div id="guide-list" class="list guide-list"></div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><h3>Selected pathway</h3><span class="mono panel-kicker">Checklist</span></div>
+          <div id="guide-detail" class="result guide-detail">Choose a pathway to see its steps and source links.</div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-head"><h3>Why this matters</h3><span class="mono panel-kicker">Evidence led</span></div>
+        <div class="stat-grid">
+          <div class="stat"><strong>~66%</strong><span>faced a legal dispute in the 2026 access survey</span></div>
+          <div class="stat"><strong>~50%</strong><span>could not find the advice they needed</span></div>
+          <div class="stat"><strong>92%</strong><span>struggled to find usable lay guides</span></div>
+          <div class="stat"><strong>47%</strong><span>think they can afford court (Afrobarometer)</span></div>
+        </div>
+        <p class="muted">Sources are linked inside each pathway. LegAlly does not replace a lawyer, court or legal-aid scheme.</p>
+      </div>
+    </section>
+
     <section id="section-platform" class="section">
       <div class="section-heading">
-        <p class="eyebrow"><span class="idx mono">06</span>Platform operations</p>
+        <p class="eyebrow"><span class="idx mono">07</span>Platform operations</p>
         <h2>Platform</h2>
         <p class="muted">Health, metrics and audit trails for administrators.</p>
       </div>

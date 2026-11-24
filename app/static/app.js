@@ -8,6 +8,8 @@ const state = {
   timeEntries: [],
   opportunities: [],
   resources: [],
+  guides: [],
+  templates: [],
 };
 
 const $ = (selector) => document.querySelector(selector);
@@ -24,6 +26,7 @@ const PILLAR_NAV = {
 
 let registerMode = false;
 let activeStream = null;
+let pendingVerificationId = null;
 
 function escapeHtml(value) {
   return String(value ?? "")
@@ -258,6 +261,109 @@ async function loadBriefcase() {
   }
 }
 
+function sourceLinks(sources) {
+  return `<div class="source-links">${(sources || [])
+    .map((source) => `<a href="${escapeHtml(source.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(source.label)}</a>`)
+    .join("")}</div>`;
+}
+
+function renderGuide(guide) {
+  const body = guide.body || {};
+  const steps = (body.steps || []).map((step) => `<li>${escapeHtml(step)}</li>`).join("");
+  const documents = (body.documents || []).map((item) => `<li>${escapeHtml(item)}</li>`).join("");
+  const swahili = body.swahili ? `<p class="swahili">${escapeHtml(body.swahili)}</p>` : "";
+  const warning = body.warning ? `<p class="warn">${escapeHtml(body.warning)}</p>` : "";
+  $("#guide-detail").innerHTML = `
+    <p class="label">${escapeHtml(guide.audience)} · ${escapeHtml(guide.topic)}</p>
+    <h3>${escapeHtml(guide.title)}</h3>
+    <p>${escapeHtml(guide.summary)}</p>
+    ${steps ? `<ol>${steps}</ol>` : ""}
+    ${documents ? `<p class="label">Documents to prepare</p><ul>${documents}</ul>` : ""}
+    ${swahili}
+    ${warning}
+    ${sourceLinks(guide.sources)}
+    <p class="meta">Last checked ${escapeHtml(guide.last_checked)}</p>`;
+}
+
+async function loadGuides() {
+  try {
+    const guides = await api("/api/workflows/guides");
+    state.guides = guides;
+    renderItems(
+      "#guide-list",
+      guides,
+      (row) => `
+        <button type="button" class="guide-btn" data-guide="${escapeHtml(row.key)}">
+          <strong>${escapeHtml(row.title)}</strong>
+          <span class="meta">${escapeHtml(row.audience)} · ${escapeHtml(row.topic)}</span>
+        </button>`,
+      "No pathways available."
+    );
+    if (guides.length) renderGuide(guides[0]);
+  } catch (error) {
+    toast(error.message, "error");
+  }
+}
+
+async function loadWorkflows() {
+  if (!state.user) return;
+  try {
+    const [templates, conflictChecks, cddRecords, tasks, cpdRecords, clients, cases] = await Promise.all([
+      api("/api/workflows/templates"),
+      api("/api/workflows/conflict-checks"),
+      api("/api/workflows/cdd"),
+      api("/api/workflows/tasks"),
+      api("/api/workflows/cpd"),
+      api("/api/briefcase/clients"),
+      api("/api/briefcase/cases"),
+    ]);
+    state.templates = templates;
+    state.clients = clients;
+    state.cases = cases;
+    $("#template-select").innerHTML = templates.map((row) => option(row.key, row.title)).join("");
+    fillSelect("#cdd-client", state.clients, "Select client", (row) => row.name);
+    fillSelect("#task-case", state.cases, "Select matter", (row) => row.title);
+    fillSelect("#trust-case", state.cases, "Select matter", (row) => row.title);
+    fillSelect("#trust-client", state.clients, "Select client", (row) => row.name);
+
+    renderItems(
+      "#conflict-output",
+      conflictChecks.slice(0, 1),
+      (row) => `<strong>${escapeHtml(row.status.toUpperCase())}</strong><p>${escapeHtml(row.result.recommendation)}</p>`,
+      "No conflict checks yet."
+    );
+    renderItems(
+      "#cdd-list",
+      cddRecords,
+      (row) => `<div class="row"><strong>Client #${escapeHtml(row.client_id)}</strong><span class="badge">${escapeHtml(row.risk_tier)}</span></div><div class="meta">${escapeHtml(row.status)} · ${escapeHtml(row.reviewed_by || "not reviewed")}</div>`,
+      "No CDD records yet."
+    );
+    renderItems(
+      "#task-list",
+      tasks,
+      (row) => `<div class="row"><strong>${escapeHtml(row.title)}</strong><span class="badge">${escapeHtml(row.priority)}</span></div><div class="meta">${escapeHtml(row.status)} · ${escapeHtml(row.category)} · ${escapeHtml(row.due_at || "no deadline")}</div>${row.status !== "done" ? `<button type="button" class="btn ghost small task-done" data-task="${row.id}">Mark done</button>` : ""}`,
+      "No deadlines yet."
+    );
+    renderItems(
+      "#cpd-list",
+      cpdRecords,
+      (row) => `<div class="row"><strong>${escapeHtml(row.title)}</strong><span class="badge">${escapeHtml(row.units)} units</span></div><div class="meta">${escapeHtml(row.provider || "No provider")} · ${escapeHtml(row.completed_at)}</div>`,
+      "No CPD records yet."
+    );
+
+    const caseId = state.cases[0]?.id;
+    const trustRows = caseId ? await api(`/api/workflows/trust/${caseId}`) : [];
+    renderItems(
+      "#trust-list",
+      trustRows,
+      (row) => `<div class="row"><strong>${escapeHtml(row.kind)} · ${money(row.amount_cents)}</strong><span class="meta">${money(row.balance_cents)}</span></div><div class="meta">${escapeHtml(row.reference || row.posted_by || "No reference")}</div>`,
+      "No trust entries yet."
+    );
+  } catch (error) {
+    toast(error.message, "error");
+  }
+}
+
 async function loadTalent() {
   try {
     const opportunities = await api("/api/talent/opportunities");
@@ -346,6 +452,7 @@ async function loadProtectedData() {
     loadTalent(),
     loadEducation(),
     loadInnovation(),
+    loadWorkflows(),
     loadPlatformPrivate(),
   ]);
 }
@@ -536,11 +643,10 @@ function submitForm(selector, path, bodyFn, message, after) {
 }
 
 async function runAI(preset, prompt, context) {
-  const result = await api("/api/ai/ask", {
+  return api("/api/ai/ask", {
     method: "POST",
     body: JSON.stringify({ preset, prompt, context }),
   });
-  return result.answer;
 }
 
 function wireEvents() {
@@ -626,12 +732,12 @@ function wireEvents() {
     button.disabled = true;
     button.textContent = "Drafting...";
     try {
-      const answer = await runAI(
+      const result = await runAI(
         "document",
         `Draft a ${$("#doc-type").value} document titled "${$("#doc-title").value.trim() || "Legal document"}" for a Kenyan client. Include all essential clauses and a signature block.`,
         { document_type: $("#doc-type").value, case_id: $("#doc-case").value || null }
       );
-      $("#doc-content").value = answer;
+      $("#doc-content").value = result.answer;
       toast("AI draft ready.", "success");
     } catch (error) {
       toast(error.message, "error");
@@ -649,12 +755,12 @@ function wireEvents() {
     output.hidden = false;
     output.textContent = "Preparing case brief...";
     try {
-      const answer = await runAI(
+      const result = await runAI(
         "strategy",
         `Prepare a concise case strategy brief for the Kenyan matter "${$("#case-title").value.trim() || "Untitled matter"}" (${$("#case-number").value.trim() || "no case number"}). Include issues, evidence, risks, next steps and likely outcomes.`,
         { client_id: $("#case-client").value || null, case_number: $("#case-number").value.trim() || null }
       );
-      output.textContent = answer;
+      output.textContent = result.answer;
       toast("Case brief ready.", "success");
     } catch (error) {
       output.textContent = error.message;
@@ -662,6 +768,233 @@ function wireEvents() {
     } finally {
       button.disabled = false;
       button.textContent = "Generate case brief";
+    }
+  });
+
+  $("#guide-list").addEventListener("click", (event) => {
+    const button = event.target.closest("[data-guide]");
+    if (!button) return;
+    const guide = state.guides.find((row) => row.key === button.dataset.guide);
+    if (guide) renderGuide(guide);
+  });
+
+  $("#conflict-form").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const output = $("#conflict-output");
+    output.hidden = false;
+    output.textContent = "Checking tenant records...";
+    try {
+      const result = await api("/api/workflows/conflict-check", {
+        method: "POST",
+        body: JSON.stringify({
+          client_name: $("#conflict-client").value.trim(),
+          adverse_parties: $("#conflict-parties").value
+            .split(",")
+            .map((item) => item.trim())
+            .filter(Boolean),
+        }),
+      });
+      output.textContent = `${result.status.toUpperCase()}\n${result.result.recommendation}\n\nScope: ${result.result.scope}`;
+      toast("Conflict check recorded.", "success");
+      await loadWorkflows();
+    } catch (error) {
+      output.textContent = error.message;
+      toast(error.message, "error");
+    }
+  });
+
+  $("#cdd-form").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const clientId = Number($("#cdd-client").value);
+    if (!clientId) {
+      toast("Choose a client.", "error");
+      return;
+    }
+    try {
+      await api("/api/workflows/cdd", {
+        method: "POST",
+        body: JSON.stringify({
+          client_id: clientId,
+          risk_tier: $("#cdd-risk").value,
+          checklist: {
+            identity_verified: $("#cdd-identity").checked,
+            beneficial_owner_checked: $("#cdd-owner").checked,
+            purpose_recorded: $("#cdd-purpose").checked,
+            risk_reason_recorded: $("#cdd-reason").checked,
+          },
+        }),
+      });
+      toast("CDD record saved.", "success");
+      await loadWorkflows();
+    } catch (error) {
+      toast(error.message, "error");
+    }
+  });
+
+  $("#task-form").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const caseId = Number($("#task-case").value);
+    if (!caseId) {
+      toast("Choose a matter.", "error");
+      return;
+    }
+    try {
+      await api("/api/workflows/tasks", {
+        method: "POST",
+        body: JSON.stringify({
+          case_id: caseId,
+          title: $("#task-title").value.trim(),
+          due_at: $("#task-due").value || null,
+          priority: $("#task-priority").value,
+          category: "deadline",
+        }),
+      });
+      $("#task-title").value = "";
+      $("#task-due").value = "";
+      toast("Deadline added.", "success");
+      await loadWorkflows();
+    } catch (error) {
+      toast(error.message, "error");
+    }
+  });
+
+  $("#task-list").addEventListener("click", async (event) => {
+    const button = event.target.closest(".task-done");
+    if (!button) return;
+    try {
+      await api(`/api/workflows/tasks/${button.dataset.task}`, {
+        method: "PATCH",
+        body: JSON.stringify({ status: "done" }),
+      });
+      toast("Task marked done.", "success");
+      await loadWorkflows();
+    } catch (error) {
+      toast(error.message, "error");
+    }
+  });
+
+  $("#trust-form").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const caseId = Number($("#trust-case").value);
+    const clientId = Number($("#trust-client").value);
+    if (!caseId || !clientId) {
+      toast("Choose a matter and client.", "error");
+      return;
+    }
+    try {
+      await api("/api/workflows/trust", {
+        method: "POST",
+        body: JSON.stringify({
+          case_id: caseId,
+          client_id: clientId,
+          kind: $("#trust-kind").value,
+          amount_cents: Number($("#trust-amount").value),
+          reference: $("#trust-reference").value.trim() || null,
+        }),
+      });
+      $("#trust-reference").value = "";
+      toast("Trust entry posted.", "success");
+      await loadWorkflows();
+    } catch (error) {
+      toast(error.message, "error");
+    }
+  });
+
+  $("#template-form").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const button = $("#template-form button[type=submit]");
+    const output = $("#template-output");
+    const verifyButton = $(".verify-btn");
+    button.disabled = true;
+    button.textContent = "Drafting...";
+    output.hidden = false;
+    output.textContent = "Preparing draft...";
+    try {
+      const client = $("#template-client").value.trim();
+      const matter = $("#template-matter").value.trim();
+      const recipient = $("#template-recipient").value.trim();
+      const values = {};
+      if (client) {
+        values.client_name = client;
+        values.client = client;
+        values.witness = client;
+        values.applicant = client;
+      }
+      if (matter) {
+        values.matter = matter;
+        values.question = matter;
+      }
+      if (recipient) {
+        values.recipient = recipient;
+        values.adverse_parties = recipient;
+      }
+      const result = await api(`/api/workflows/templates/${encodeURIComponent($("#template-select").value)}/draft`, {
+        method: "POST",
+        body: JSON.stringify({ values, case_id: Number($("#doc-case").value) || null }),
+      });
+      output.textContent = `${result.draft}\n\nNOTICE: ${result.notice}`;
+      pendingVerificationId = result.output_id;
+      verifyButton.hidden = false;
+      toast("Draft ready for review.", "success");
+    } catch (error) {
+      output.textContent = error.message;
+      toast(error.message, "error");
+    } finally {
+      button.disabled = false;
+      button.textContent = "Draft from template";
+    }
+  });
+
+  $(".verify-btn").addEventListener("click", async () => {
+    if (!pendingVerificationId) return;
+    try {
+      await api(`/api/workflows/ai/${pendingVerificationId}/verify`, {
+        method: "POST",
+        body: JSON.stringify({ verified_by: state.user.full_name, note: "Reviewed in workspace" }),
+      });
+      $(".verify-btn").hidden = true;
+      toast("Draft marked as reviewed.", "success");
+    } catch (error) {
+      toast(error.message, "error");
+    }
+  });
+
+  $("#fee-form").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const output = $("#fee-output");
+    output.hidden = false;
+    try {
+      const result = await api("/api/workflows/fees/calculate", {
+        method: "POST",
+        body: JSON.stringify({
+          hours: Number($("#fee-hours").value),
+          hourly_rate_cents: Number($("#fee-rate").value),
+          disbursements_cents: Number($("#fee-disbursements").value),
+        }),
+      });
+      output.textContent = `Fees: ${money(result.fees_cents)}\nDisbursements: ${money(result.disbursements_cents)}\nVAT: ${money(result.vat_cents)}\nTotal: ${money(result.total_cents)}\n\n${result.note}`;
+    } catch (error) {
+      output.textContent = error.message;
+      toast(error.message, "error");
+    }
+  });
+
+  $("#cpd-form").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    try {
+      await api("/api/workflows/cpd", {
+        method: "POST",
+        body: JSON.stringify({
+          title: $("#cpd-title").value.trim(),
+          provider: $("#cpd-provider").value.trim() || null,
+          units: Number($("#cpd-units").value),
+        }),
+      });
+      $("#cpd-form").reset();
+      toast("CPD record added.", "success");
+      await loadWorkflows();
+    } catch (error) {
+      toast(error.message, "error");
     }
   });
 
@@ -741,7 +1074,7 @@ function wireEvents() {
 
 async function init() {
   wireEvents();
-  await Promise.allSettled([loadPillars(), loadHealth(), loadTalent(), loadEducation()]);
+  await Promise.allSettled([loadPillars(), loadHealth(), loadTalent(), loadEducation(), loadGuides()]);
   if (state.token) {
     try {
       state.user = await api("/api/auth/me");
