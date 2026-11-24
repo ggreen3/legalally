@@ -8,6 +8,7 @@ legalally.db
 *.db
 .env
 .env.*
+!.env.example
 .vercel/
 dist/
 build/
