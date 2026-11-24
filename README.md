@@ -94,7 +94,7 @@ The same Pico transport powers `POST /api/ai/ask` with four presets: `checkbar`,
 
 ## Vercel
 
-`vercel.json`, `.vercelignore` and `.python-version` are included. Pushing to `main` triggers a Vercel deployment for the connected GitHub repository. For persistent production data, set `DATABASE_URL` to a pooled Postgres URL (for example from the Neon/Vercel Marketplace); SQLite is for local development only. Required environment variables are listed in `.env.example`.
+`vercel.json`, `.vercelignore` and `.python-version` are included. Pushing to `main` triggers a Vercel deployment for the connected GitHub repository at `https://github.com/ggreen3/legalally`. For persistent production data, set `DATABASE_URL` to a pooled Postgres URL (for example from the Neon/Vercel Marketplace); SQLite is for local development only. Required environment variables are listed in `.env.example`.
 
 ## Project layout
 
