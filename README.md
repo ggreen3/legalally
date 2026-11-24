@@ -4,7 +4,7 @@ LegAlly is a unified legal-technology platform: **the digital infrastructure for
 
 ## Products and ecosystem pillars
 
-- **BriefCase** — virtual law firm infrastructure: clients, matters, documents, time entries, invoices, subscriptions and early-access waitlist.
+- **BriefCase** — virtual law firm infrastructure: clients, matters, documents, time entries, invoices, subscriptions, firm command center, official court registry links, cause-list task preparation and early-access waitlist.
 - **The Checkbar** — Kenyan legal information assistant with a local rule-based knowledge base and optional OpenAI provider.
 - **Talent** — opportunities and applications connecting advocates, students and firms.
 - **Academy** — legal education resources, enrollments and progress tracking.
@@ -34,7 +34,7 @@ admin@legalally.co.ke / Admin123!
 advocate@legalally.co.ke / Advocate123!
 ```
 
-Copy `.env.example` to `.env` and adjust values before deploying. Generate a strong `SECRET_KEY` and provide `OPENAI_API_KEY` only on the server; never place provider keys in the browser.
+Copy `.env.example` to `.env` and adjust values before deploying. Generate a strong `SECRET_KEY` and provide `OPENAI_API_KEY` only on the server; never place provider keys in the browser. Google sign-in is optional: set `GOOGLE_CLIENT_ID` to a Google OAuth web client ID, then authorize the local and production origins in Google Cloud. The browser receives only the public client ID; the backend verifies Google ID tokens and issues the normal LegAlly JWTs.
 
 ## Tests and lint
 
@@ -60,7 +60,7 @@ Interactive OpenAPI documentation is available at `http://127.0.0.1:8000/docs`.
 
 | Prefix | Purpose |
 | --- | --- |
-| `/api/auth` | Register, login, refresh token, current user |
+| `/api/auth` | Register, login, Google ID-token sign-in, refresh token, current user |
 | `/api/checkbar` | Ask legal information questions, stream answers and view history |
 | `/api/ai` | Pico-powered document drafting, case strategy and legal companion |
 | `/api/briefcase` | Practice management and billing |
@@ -91,7 +91,7 @@ wss://backend.buildpicoapps.com/ask_ai_streaming_v2
 
 The browser opens an authenticated WebSocket to `ws(s)://<host>/api/checkbar/stream`, sends the question payload, and receives `chunk`, `done` and `error` events. The backend proxies Pico, enforces auth and rate limits, persists the full answer, and writes an audit event. If the stream fails, the client falls back to `POST /api/checkbar/ask`.
 
-The same Pico transport powers `POST /api/ai/ask` with four presets: `checkbar`, `document`, `strategy` and `companion`. BriefCase uses these for AI document drafting and case briefs. Every AI output is stored as an `AiOutput` record and can be marked reviewed through `POST /api/workflows/ai/{output_id}/verify`.
+The same Pico transport powers `POST /api/ai/ask` with four presets: `checkbar`, `document`, `strategy` and `companion`. BriefCase uses these for AI document drafting and case briefs; LegAlly Studio uses the same transport behind a white-labelled workspace interface with provider and model labels hidden. Every AI output is stored as an `AiOutput` record and can be marked reviewed through `POST /api/workflows/ai/{output_id}/verify`.
 
 ## Research-backed workflows
 
@@ -100,6 +100,7 @@ LegAlly now includes practical workflows derived from Kenyan legal-sector resear
 - **Access pathways:** public plain-language guides on legal-aid eligibility, e-filing deadlines, client-money controls, AML client due diligence, primary-source research and ATP/CPD planning. Each guide carries source links, an “open primary source” warning and a Kiswahili prompt where useful.
 - **Conflict and client care:** name-based conflict screening against tenant records, with a clear scope disclaimer, plus a client due-diligence checklist with standard/enhanced risk tiers.
 - **Matter control:** task and deadline tracking with priority, owner and source metadata.
+- **Court registry:** official links to Kenya's eFiling and Cause List portals with matter-linked checklist tasks; LegAlly prepares the work, while filing and registry searches are completed on the official portals.
 - **Trust ledger:** receipt/payment postings with an overdraw guard and running matter balance.
 - **Fees:** a transparent planning estimate with VAT and a warning to check the current remuneration order and tax rules.
 - **Drafting:** template-driven Pico drafting with unresolved placeholders preserved and a human verification step.

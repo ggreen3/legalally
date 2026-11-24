@@ -350,6 +350,39 @@ def test_template_draft_and_verification_with_mocked_pico(client, monkeypatch):
     assert verify.json()["verified_at"]
 
 
+def test_google_sign_in_creates_and_reuses_tenant(client, monkeypatch):
+    import importlib
+
+    auth_router = importlib.import_module("app.modules.auth.router")
+
+    async def fake_verify(credential):
+        assert credential
+        return {
+            "email": "google.owner@example.com",
+            "email_verified": True,
+            "name": "Google Owner",
+            "iss": "https://accounts.google.com",
+        }
+
+    monkeypatch.setattr(auth_router.settings, "google_client_id", "test-client-id")
+    monkeypatch.setattr(auth_router, "verify_google_id_token", fake_verify)
+
+    config = client.get("/api/auth/config")
+    assert config.status_code == 200
+    assert config.json()["google_client_id"] == "test-client-id"
+
+    first = client.post("/api/auth/google", json={"credential": "google-credential-with-sufficient-length-for-validation"})
+    assert first.status_code == 200, first.text
+    assert first.json()["access_token"]
+
+    second = client.post("/api/auth/google", json={"credential": "google-credential-with-sufficient-length-for-validation"})
+    assert second.status_code == 200, second.text
+    me = client.get("/api/auth/me", headers={"Authorization": f"Bearer {second.json()['access_token']}"})
+    assert me.status_code == 200
+    assert me.json()["email"] == "google.owner@example.com"
+    assert me.json()["role"] == "owner"
+
+
 def test_static_ui_served(client):
     response = client.get("/")
     assert response.status_code == 200

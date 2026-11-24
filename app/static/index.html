@@ -50,6 +50,7 @@
         <input id="auth-tenant" type="text" placeholder="Firm name" hidden>
         <button id="login-btn" type="button" class="btn primary small">Sign in</button>
         <button id="register-btn" type="button" class="btn primary small" hidden>Register</button>
+        <div id="google-signin" hidden></div>
         <button id="toggle-register" type="button" class="btn link">Create account</button>
       </div>
     </form>
@@ -213,6 +214,43 @@
         <div class="panel">
           <div class="panel-head"><h3>Recent firm activity</h3><span class="mono panel-kicker">Audit trail</span></div>
           <div id="recent-activity" class="list"></div>
+        </div>
+        <div class="two-column">
+          <div class="panel">
+            <div class="panel-head"><h3>Court registry</h3><span class="mono panel-kicker">Official portals</span></div>
+            <p class="muted">Prepare filings and cause-list checks in LegAlly, then complete the official step on the Judiciary portals.</p>
+            <div class="registry-links">
+              <a href="https://efiling.court.go.ke/" target="_blank" rel="noopener noreferrer">Open eFiling</a>
+              <a href="https://causelist.court.go.ke/causelist" target="_blank" rel="noopener noreferrer">Open Cause List</a>
+              <a href="https://judiciary.ecitizen.go.ke/" target="_blank" rel="noopener noreferrer">Judiciary eCitizen</a>
+            </div>
+            <form id="registry-form" class="form-stack compact">
+              <select id="registry-case"></select>
+              <select id="registry-action">
+                <option value="efile">Prepare eFiling bundle</option>
+                <option value="causelist">Check court cause list</option>
+              </select>
+              <input id="registry-station" placeholder="Court station, e.g. Nairobi">
+              <input id="registry-date" type="date">
+              <button type="submit" class="btn primary small">Create registry task</button>
+            </form>
+            <div id="registry-output" class="result" hidden></div>
+          </div>
+          <div class="panel studio-panel">
+            <div class="panel-head"><h3>LegAlly Studio</h3><span class="mono panel-kicker">Workspace intelligence</span></div>
+            <p class="muted">A private drafting and strategy workspace for the selected matter. Review every output before use.</p>
+            <form id="studio-form" class="form-stack compact">
+              <select id="studio-mode">
+                <option value="document">Draft document</option>
+                <option value="strategy">Matter strategy</option>
+                <option value="companion">Legal companion</option>
+              </select>
+              <select id="studio-case"></select>
+              <textarea id="studio-prompt" placeholder="Describe what you need drafted, reviewed or planned..." required minlength="10"></textarea>
+              <button type="submit" class="btn primary small">Run Studio</button>
+            </form>
+            <div id="studio-output" class="result" hidden></div>
+          </div>
         </div>
         <div class="two-column">
           <div class="panel">

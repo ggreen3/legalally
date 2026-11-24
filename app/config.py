@@ -20,6 +20,7 @@ class Settings(BaseSettings):
     refresh_token_expire_days: int = 7
     cors_origins: list[str] = ["http://localhost:3000", "http://127.0.0.1:8000"]
     rate_limit_per_minute: int = 120
+    google_client_id: str | None = None
     openai_api_key: str | None = None
     openai_model: str = "gpt-4o-mini"
     pico_ws_url: str = "wss://backend.buildpicoapps.com/ask_ai_streaming_v2"

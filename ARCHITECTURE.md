@@ -32,6 +32,7 @@ Registration creates a `Tenant`, an owner `User` and a starter `Subscription` in
 - Access tokens must have `type=access`; refresh tokens must have `type=refresh`.
 - `require_roles(*roles)` allows matching roles or `admin`.
 - Token decode failures become structured 401 responses.
+- Google Identity Services sends an ID token to `POST /api/auth/google`. The backend verifies the RS256 signature against Google JWKS, checks audience, issuer and `email_verified`, then either signs in the existing user or creates a tenant, owner and starter subscription. The public client ID is exposed only through `GET /api/auth/config`; no OAuth secret or ID-token verification secret is sent to the browser.
 
 ## Data model
 
@@ -77,6 +78,7 @@ BriefCase exposes resources for clients, matters, documents, billable time and i
 - Conflict screening compares distinctive name tokens across tenant clients, matters and prior checks, then stores the result with an explicit scope disclaimer.
 - CDD records are upserted per client and only become `complete` when the four required checks are true.
 - Matter tasks carry deadlines, priority, owner and source so court dates are not left in chat threads or paper diaries.
+- The Court registry panel links to the official eFiling and Cause List portals and creates matter-linked registry tasks; LegAlly does not pretend to be the court registry.
 - Trust postings compute a running balance and reject payments that would overdraw a client matter.
 - Fee estimates calculate fees, disbursements and VAT with a warning to verify the current remuneration order and tax rules.
 - Template drafting preserves unresolved placeholders and requires a separate human verification step.

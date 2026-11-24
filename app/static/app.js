@@ -30,6 +30,7 @@ const PILLAR_NAV = {
 };
 
 let registerMode = false;
+let googleReady = false;
 let activeStream = null;
 let pendingVerificationId = null;
 
@@ -161,6 +162,7 @@ function setAuthUI() {
   $("#logout-btn").hidden = !signedIn;
   $("#toggle-register").hidden = signedIn;
   $("#register-btn").hidden = true;
+  $("#google-signin").hidden = signedIn || !googleReady;
   $("#auth-name").hidden = !registerMode || signedIn;
   $("#auth-tenant").hidden = !registerMode || signedIn;
   $("#login-btn").textContent = registerMode ? "Register" : "Sign in";
@@ -247,6 +249,145 @@ async function authenticate() {
     setAuthUI();
   } catch (error) {
     toast(error.message, "error");
+  }
+}
+
+function initializeGoogleIdentity(clientId) {
+  if (!window.google?.accounts?.id) return;
+  window.google.accounts.id.initialize({
+    client_id: clientId,
+    callback: handleGoogleCredential,
+    ux_mode: "popup",
+  });
+  window.google.accounts.id.renderButton($("#google-signin"), {
+    theme: "outline",
+    size: "large",
+    text: "continue_with",
+    shape: "rect",
+    width: 260,
+  });
+  googleReady = true;
+  setAuthUI();
+}
+
+async function loadGoogleSignIn(clientId) {
+  if (window.google?.accounts?.id) {
+    initializeGoogleIdentity(clientId);
+    return;
+  }
+  await new Promise((resolve, reject) => {
+    const script = document.createElement("script");
+    script.src = "https://accounts.google.com/gsi/client";
+    script.async = true;
+    script.defer = true;
+    script.onload = resolve;
+    script.onerror = reject;
+    document.head.appendChild(script);
+  });
+  initializeGoogleIdentity(clientId);
+}
+
+async function handleGoogleCredential(response) {
+  try {
+    const tokens = await api("/api/auth/google", {
+      method: "POST",
+      body: JSON.stringify({ credential: response.credential }),
+    });
+    state.token = tokens.access_token;
+    localStorage.setItem("legalally_token", state.token);
+    state.user = await api("/api/auth/me");
+    setAuthUI();
+    await loadProtectedData();
+    window.google?.accounts?.id?.disableAutoSelect();
+    setAuthDrawer(false);
+    toast("Signed in with Google.", "success");
+  } catch (error) {
+    toast(error.message, "error");
+  }
+}
+
+async function configureGoogleSignIn() {
+  try {
+    const config = await api("/api/auth/config");
+    if (config.google_client_id) await loadGoogleSignIn(config.google_client_id);
+  } catch {
+  }
+}
+
+async function createRegistryTask(event) {
+  event.preventDefault();
+  const caseId = Number($("#registry-case").value);
+  if (!caseId) {
+    toast("Select a matter first.", "error");
+    return;
+  }
+  const action = $("#registry-action").value;
+  const station = $("#registry-station").value.trim();
+  const date = $("#registry-date").value;
+  const portals = {
+    efile: "https://efiling.court.go.ke/",
+    causelist: "https://causelist.court.go.ke/causelist",
+  };
+  const labels = {
+    efile: "Prepare eFiling bundle",
+    causelist: "Check court cause list",
+  };
+  const dueAt = date ? new Date(`${date}T16:00:00`).toISOString() : null;
+  const description = [
+    `Official portal: ${portals[action]}`,
+    station ? `Court station: ${station}` : "",
+    date ? `Target date: ${date}` : "",
+    "Complete the official filing or cause-list step outside LegAlly and save the receipt or result against the matter.",
+  ]
+    .filter(Boolean)
+    .join("\n");
+  try {
+    const task = await api("/api/workflows/tasks", {
+      method: "POST",
+      body: JSON.stringify({
+        case_id: caseId,
+        title: `${labels[action]} · ${caseTitle(caseId)}`,
+        description,
+        due_at: dueAt,
+        priority: "high",
+        category: "registry",
+        source: portals[action],
+      }),
+    });
+    const output = $("#registry-output");
+    output.hidden = false;
+    output.innerHTML = `<p><strong>${escapeHtml(task.title)}</strong> added to the matter checklist.</p><p><a href="${portals[action]}" target="_blank" rel="noopener noreferrer">Open the official portal</a></p>`;
+    event.target.reset();
+    toast("Registry task created.", "success");
+    await loadBriefcase();
+  } catch (error) {
+    toast(error.message, "error");
+  }
+}
+
+async function runStudio(event) {
+  event.preventDefault();
+  const button = event.target.querySelector("button[type='submit']");
+  const output = $("#studio-output");
+  const caseId = Number($("#studio-case").value) || null;
+  button.disabled = true;
+  button.textContent = "Working...";
+  output.hidden = false;
+  output.textContent = "Preparing workspace output...";
+  try {
+    const result = await runAI(
+      $("#studio-mode").value,
+      $("#studio-prompt").value.trim(),
+      { case_id: caseId, client_id: state.cases.find((row) => row.id === caseId)?.client_id || null }
+    );
+    renderLegalOutput("#studio-output", result.answer, "No output generated.");
+    toast("Studio output ready.", "success");
+  } catch (error) {
+    output.textContent = error.message;
+    toast(error.message, "error");
+  } finally {
+    button.disabled = false;
+    button.textContent = "Run Studio";
   }
 }
 
@@ -509,6 +650,12 @@ async function loadBriefcase() {
     fillSelect("#time-case", cases, "Select matter", (row) => row.title);
     fillSelect("#invoice-client", clients, "Select client", (row) => row.name);
     fillSelect("#invoice-case", cases, "No matter", (row) => row.title);
+    fillSelect("#registry-case", cases, "Select matter", (row) => row.title);
+    fillSelect("#studio-case", cases, "No matter", (row) => row.title);
+    if (state.selectedCaseId) {
+      $("#registry-case").value = String(state.selectedCaseId);
+      $("#studio-case").value = String(state.selectedCaseId);
+    }
 
     renderItems("#client-list", clients, (row) => `<strong>${escapeHtml(row.name)}</strong><div class="meta">${escapeHtml(row.email || row.phone || "No contact details")}</div>`);
     renderItems("#case-list", cases, (row) => `<button type="button" class="matter-row" data-open-matter="${row.id}"><div class="row"><strong>${escapeHtml(row.title)}</strong><span class="badge">${escapeHtml(row.status)}</span></div><div class="meta">${escapeHtml(row.case_number || row.category)}</div></button>`);
@@ -523,7 +670,7 @@ async function loadBriefcase() {
 
 function openMatter(caseId) {
   state.selectedCaseId = Number(caseId);
-  ["#doc-case", "#time-case", "#invoice-case", "#trust-case", "#task-case", "#timer-case"].forEach((selector) => {
+  ["#doc-case", "#time-case", "#invoice-case", "#trust-case", "#task-case", "#timer-case", "#registry-case", "#studio-case"].forEach((selector) => {
     const el = $(selector);
     if (el) el.value = String(state.selectedCaseId);
   });
@@ -1027,6 +1174,8 @@ function wireEvents() {
   });
   $("#login-btn").addEventListener("click", authenticate);
   $("#register-btn").addEventListener("click", authenticate);
+  $("#registry-form").addEventListener("submit", createRegistryTask);
+  $("#studio-form").addEventListener("submit", runStudio);
   $("#logout-btn").addEventListener("click", () => {
     if (activeStream) {
       activeStream.abort();
@@ -1472,7 +1621,7 @@ function wireEvents() {
 
 async function init() {
   wireEvents();
-  await Promise.allSettled([loadPillars(), loadHealth(), loadTalent(), loadEducation(), loadGuides()]);
+  await Promise.allSettled([loadPillars(), loadHealth(), loadTalent(), loadEducation(), loadGuides(), configureGoogleSignIn()]);
   if (state.token) {
     try {
       state.user = await api("/api/auth/me");
