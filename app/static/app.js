@@ -706,6 +706,7 @@ function wireEvents() {
     localStorage.removeItem("legalally_token");
     setAuthUI();
     toast("Signed out.");
+    setTimeout(() => window.location.reload(), 400);
   });
 
   $("#checkbar-form").addEventListener("submit", async (event) => {
