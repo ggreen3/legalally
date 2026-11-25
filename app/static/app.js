@@ -370,6 +370,10 @@ async function runStudio(event) {
   const button = event.target.querySelector("button[type='submit']");
   const output = $("#studio-output");
   const caseId = Number($("#studio-case").value) || null;
+  if (!$("#studio-consent").checked) {
+    toast("Confirm the AI-use notice first.", "error");
+    return;
+  }
   button.disabled = true;
   button.textContent = "Working...";
   output.hidden = false;
@@ -381,6 +385,7 @@ async function runStudio(event) {
       { case_id: caseId, client_id: state.cases.find((row) => row.id === caseId)?.client_id || null }
     );
     renderLegalOutput("#studio-output", result.answer, "No output generated.");
+    $("#studio-consent").checked = false;
     toast("Studio output ready.", "success");
   } catch (error) {
     output.textContent = error.message;

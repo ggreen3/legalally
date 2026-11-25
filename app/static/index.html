@@ -238,7 +238,7 @@
           </div>
           <div class="panel studio-panel">
             <div class="panel-head"><h3>LegAlly Studio</h3><span class="mono panel-kicker">Workspace intelligence</span></div>
-            <p class="muted">A private drafting and strategy workspace for the selected matter. Review every output before use.</p>
+            <p class="muted">AI output is general information, not legal advice. Do not enter confidential client data unless you are authorised and your firm permits AI processing. Verify every output against primary sources before use.</p>
             <form id="studio-form" class="form-stack compact">
               <select id="studio-mode">
                 <option value="document">Draft document</option>
@@ -247,6 +247,10 @@
               </select>
               <select id="studio-case"></select>
               <textarea id="studio-prompt" placeholder="Describe what you need drafted, reviewed or planned..." required minlength="10"></textarea>
+              <label class="check-row">
+                <input id="studio-consent" type="checkbox" required>
+                <span>I confirm this prompt contains no protected client data unless authorised, and I will verify the output.</span>
+              </label>
               <button type="submit" class="btn primary small">Run Studio</button>
             </form>
             <div id="studio-output" class="result" hidden></div>

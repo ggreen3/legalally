@@ -1164,6 +1164,20 @@ main {
   letter-spacing: 0.02em;
 }
 
+.check-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.check-row input {
+  margin-top: 2px;
+  accent-color: var(--accent);
+}
+
 #google-signin {
   margin-top: 10px;
   min-height: 42px;

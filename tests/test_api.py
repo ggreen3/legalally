@@ -388,3 +388,5 @@ def test_static_ui_served(client):
     assert response.status_code == 200
     assert "LegAlly" in response.text
     assert "The Checkbar" in response.text
+    assert "not legal advice" in response.text
+    assert "studio-consent" in response.text

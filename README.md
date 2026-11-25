@@ -93,6 +93,14 @@ The browser opens an authenticated WebSocket to `ws(s)://<host>/api/checkbar/str
 
 The same Pico transport powers `POST /api/ai/ask` with four presets: `checkbar`, `document`, `strategy` and `companion`. BriefCase uses these for AI document drafting and case briefs; LegAlly Studio uses the same transport behind a white-labelled workspace interface with provider and model labels hidden. Every AI output is stored as an `AiOutput` record and can be marked reviewed through `POST /api/workflows/ai/{output_id}/verify`.
 
+## Lawful use of OpenCode and AI models
+
+- OpenCode's source is MIT licensed, so commercial use and modification are allowed when the copyright and permission notice are retained.
+- `@opencode/sdk` embeds a full OpenCode host and needs a Bun/Node runtime. The current Vercel Python app cannot host it directly; a separate self-hosted Node/Bun service would be required for a true embedded OpenCode feature.
+- Free-tier chat models, including Big Pickle, are restricted to OpenCode clients. Calling them directly from LegAlly's Python backend is not permitted. Even through OpenCode, some free models may use collected data to improve the model, so free models must stay behind explicit informed consent and must not receive confidential client data by default.
+- OpenCode and Anomaly trademarks, logos and colours may not be renamed, recoloured or presented as LegAlly's own, and may not imply endorsement. If LegAlly later embeds OpenCode, describe it as "LegAlly Studio, built with OpenCode", link to `https://opencode.ai`, and use unmodified official badge assets.
+- The current site makes no claim that Studio is OpenCode or Big Pickle. Studio shows an AI-use notice, requires confirmation before each run, and warns users not to submit protected client data without authorisation.
+
 ## Research-backed workflows
 
 LegAlly now includes practical workflows derived from Kenyan legal-sector research rather than generic demo screens:
