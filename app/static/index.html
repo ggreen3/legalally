@@ -176,6 +176,10 @@
         <p class="eyebrow"><span class="idx mono">02</span>Virtual law firm</p>
         <h2>BriefCase</h2>
         <p class="muted">Manage clients, matters, documents, billable time and invoices with tenant isolation.</p>
+        <label class="check-row">
+          <input id="briefcase-ai-consent" type="checkbox">
+          <span>AI drafts and case briefs may contain general information only; I will verify outputs and exclude protected client data unless authorised.</span>
+        </label>
       </div>
       <div class="requires-auth">
         <div class="stat-grid" id="brief-stats"></div>
@@ -419,6 +423,11 @@
           </form>
           <p id="waitlist-status" class="muted"></p>
         </div>
+        <div id="waitlist-admin-panel" class="panel" hidden>
+          <div class="panel-head"><h3>Waitlist responses</h3><span id="waitlist-count" class="mono panel-kicker">0</span></div>
+          <div id="waitlist-admin-list" class="list"></div>
+          <button id="waitlist-download" type="button" class="btn ghost small">Download CSV</button>
+        </div>
         <div class="panel">
           <div class="panel-head"><h3>Subscription</h3><span class="mono panel-kicker">Current plan</span></div>
           <div id="subscription" class="result"></div>
@@ -520,12 +529,12 @@
       <div class="panel">
         <div class="panel-head"><h3>Why this matters</h3><span class="mono panel-kicker">Evidence led</span></div>
         <div class="stat-grid">
-          <div class="stat"><strong>~66%</strong><span>faced a legal dispute in the 2026 access survey</span></div>
-          <div class="stat"><strong>~50%</strong><span>could not find the advice they needed</span></div>
-          <div class="stat"><strong>92%</strong><span>struggled to find usable lay guides</span></div>
-          <div class="stat"><strong>47%</strong><span>think they can afford court (Afrobarometer)</span></div>
+          <div class="stat"><strong>47%</strong><span>think they could afford to take a legal problem to court</span></div>
+          <div class="stat"><strong>37%</strong><span>are aware of local legal-aid services</span></div>
+          <div class="stat"><strong>169k+</strong><span>cases older than one year remained in June 2025</span></div>
+          <div class="stat"><strong>18,335</strong><span>practising certificates were issued in 2025</span></div>
         </div>
-        <p class="muted">Sources are linked inside each pathway. LegAlly does not replace a lawyer, court or legal-aid scheme.</p>
+        <p class="muted">Sources: Afrobarometer Round 10 Kenya dispatch, Kenyan Judiciary backlog reporting and the Law Society of Kenya 2025 Annual Report. Sources are linked inside each pathway. LegAlly does not replace a lawyer, court or legal-aid scheme.</p>
       </div>
     </section>
 
@@ -622,7 +631,7 @@
       <div class="section-heading">
         <p class="eyebrow"><span class="idx mono">09</span>Workspace agent</p>
         <h2>LegAlly Agent.</h2>
-        <p class="muted">A white-labelled OpenCode workspace for drafting, research and practical next steps, available inside the platform.</p>
+        <p class="muted">Agent fallback is live inside the platform; the embedded OpenCode service is deployment-ready with isolated workspaces and shell access disabled.</p>
       </div>
       <div class="agent-shell">
         <aside class="agent-rail">

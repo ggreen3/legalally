@@ -677,6 +677,39 @@ async function loadBriefcase() {
     renderItems("#time-list", timeEntries, (row) => `<div class="row"><strong>${escapeHtml(row.description)}</strong><span class="meta">${escapeHtml(row.minutes)} min</span></div>`);
     $("#subscription").innerHTML = `<p><strong>${escapeHtml(subscription.tier)}</strong> · ${escapeHtml(subscription.status)}</p><p class="muted">${money(subscription.monthly_price_cents)} per month</p>`;
     renderFirmCommand();
+    if (state.user?.role === "admin") await loadWaitlistAdmin();
+  } catch (error) {
+    toast(error.message, "error");
+  }
+}
+
+async function loadWaitlistAdmin() {
+  const panel = $("#waitlist-admin-panel");
+  if (!panel) return;
+  panel.hidden = false;
+  try {
+    const rows = await api("/api/briefcase/waitlist");
+    $("#waitlist-count").textContent = `${rows.length} joined`;
+    renderItems("#waitlist-admin-list", rows.slice(0, 12), (row) => `<div class="row"><strong>${escapeHtml(row.name)}</strong><span class="meta">${escapeHtml(row.role || "—")}</span></div><div class="meta">${escapeHtml(row.email)}</div>`, "No responses yet.");
+  } catch (error) {
+    toast(error.message, "error");
+  }
+}
+
+async function downloadWaitlistCsv() {
+  try {
+    const response = await fetch("/api/briefcase/waitlist/export", {
+      headers: { Authorization: `Bearer ${state.token}` },
+    });
+    if (!response.ok) throw new Error("Could not export the waitlist");
+    const blob = await response.blob();
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "legalally-waitlist.csv";
+    link.click();
+    URL.revokeObjectURL(url);
+    toast("Waitlist CSV downloaded.", "success");
   } catch (error) {
     toast(error.message, "error");
   }
@@ -1324,7 +1357,7 @@ function renderAgentStatus() {
   el.innerHTML = `
     <div class="agent-config-row"><span class="mono">Status</span><strong>${connected ? "Ready" : "Fallback"}</strong></div>
     <div class="agent-config-row"><span class="mono">Tools</span><span>${(config.tools || []).map(escapeHtml).join(", ")}</span></div>
-    <p class="muted">${connected ? "Sessions run in an isolated OpenCode workspace. Shell access is disabled." : "Deploy agent-service and set AGENT_SERVICE_URL plus AGENT_SERVICE_KEY to enable the embedded OpenCode agent."}</p>`;
+    <p class="muted">${connected ? "Sessions run in an isolated workspace. Shell access is disabled." : "Agent fallback is live. Deploy agent-service and set AGENT_SERVICE_URL plus AGENT_SERVICE_KEY to enable the embedded OpenCode agent."}</p>`;
 }
 
 function renderAgentThread(messages = []) {
@@ -1583,6 +1616,10 @@ function wireEvents() {
 
   $("#doc-draft-btn").addEventListener("click", async () => {
     const button = $("#doc-draft-btn");
+    if (!$("#briefcase-ai-consent").checked) {
+      toast("Confirm the BriefCase AI-use notice first.", "error");
+      return;
+    }
     button.disabled = true;
     button.textContent = "Drafting...";
     try {
@@ -1595,6 +1632,7 @@ function wireEvents() {
       const preview = $("#doc-preview");
       preview.hidden = false;
       preview.innerHTML = legalDocumentHtml($("#doc-content").value, "No draft to preview.");
+      $("#briefcase-ai-consent").checked = false;
       toast("AI draft ready.", "success");
     } catch (error) {
       toast(error.message, "error");
@@ -1607,6 +1645,10 @@ function wireEvents() {
   $("#case-brief-btn").addEventListener("click", async () => {
     const button = $("#case-brief-btn");
     const output = $("#case-brief-output");
+    if (!$("#briefcase-ai-consent").checked) {
+      toast("Confirm the BriefCase AI-use notice first.", "error");
+      return;
+    }
     button.disabled = true;
     button.textContent = "Analysing...";
     output.hidden = false;
@@ -1618,6 +1660,7 @@ function wireEvents() {
         { client_id: $("#case-client").value || null, case_number: $("#case-number").value.trim() || null }
       );
       renderLegalOutput("#case-brief-output", result.answer, "No case brief generated.");
+      $("#briefcase-ai-consent").checked = false;
       toast("Case brief ready.", "success");
     } catch (error) {
       output.textContent = error.message;
@@ -1880,7 +1923,10 @@ function wireEvents() {
     role: $("#wait-role").value.trim() || null,
   }), "Waitlist joined.", async () => {
     $("#waitlist-status").textContent = "You are on the BriefCase early access list.";
+    if (state.user?.role === "admin") await loadWaitlistAdmin();
   });
+
+  $("#waitlist-download")?.addEventListener("click", downloadWaitlistCsv);
 
   $("#application-form").addEventListener("submit", async (event) => {
     event.preventDefault();

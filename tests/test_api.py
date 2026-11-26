@@ -127,6 +127,39 @@ def test_briefcase_workflow_and_tenant_isolation(client):
     assert updated.json()["status"] == "paid"
 
 
+def test_waitlist_public_join_admin_list_and_export(client):
+    joined = client.post(
+        "/api/briefcase/waitlist",
+        json={"name": "Jane Mwangi", "email": "Jane@Example.com", "role": "Advocate"},
+    )
+    assert joined.status_code == 201, joined.text
+    assert joined.json()["status"] == "registered"
+
+    duplicate = client.post(
+        "/api/briefcase/waitlist",
+        json={"name": "Jane Mwangi", "email": "jane@example.com", "role": "Advocate"},
+    )
+    assert duplicate.status_code == 409
+
+    assert client.get("/api/briefcase/waitlist").status_code == 401
+
+    login = client.post(
+        "/api/auth/login",
+        json={"email": "admin@legalally.co.ke", "password": "Admin123!"},
+    )
+    assert login.status_code == 200, login.text
+    headers = {"Authorization": f"Bearer {login.json()['access_token']}"}
+
+    rows = client.get("/api/briefcase/waitlist", headers=headers)
+    assert rows.status_code == 200, rows.text
+    assert any(row["email"] == "jane@example.com" for row in rows.json())
+
+    exported = client.get("/api/briefcase/waitlist/export", headers=headers)
+    assert exported.status_code == 200
+    assert "jane@example.com" in exported.text
+    assert "Jane Mwangi" in exported.text
+
+
 def test_talent_public_opportunities_and_application(client):
     headers = register(client, "talent@example.com", "Talent Firm")
     opportunity = client.post(
@@ -316,7 +349,7 @@ def test_workflow_guides_conflict_tasks_trust_and_fees(client):
     )
     assert fee.status_code == 200, fee.text
     assert fee.json()["fees_cents"] == 3750000
-    assert fee.json()["total_cents"] == 4104000
+    assert fee.json()["total_cents"] == 4408000
 
 
 def test_template_draft_and_verification_with_mocked_pico(client, monkeypatch):
@@ -390,9 +423,16 @@ def test_static_ui_served(client):
     assert "The Checkbar" in response.text
     assert "not legal advice" in response.text
     assert "studio-consent" in response.text
+    assert "briefcase-ai-consent" in response.text
     assert "section-spaces" in response.text
     assert "section-agent" in response.text
     assert "agent-consent" in response.text
+    assert "waitlist-admin-panel" in response.text
+
+    waitlist = client.get("/waitlist")
+    assert waitlist.status_code == 200
+    assert "Early access / BriefCase" in waitlist.text
+    assert "wl-form" in waitlist.text
 
 
 def test_spaces_marketplace_and_enquiry(client):

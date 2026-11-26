@@ -131,7 +131,7 @@ class FeeIn(BaseModel):
     hours: float = Field(gt=0, le=1000)
     hourly_rate_cents: int = Field(gt=0)
     disbursements_cents: int = Field(default=0, ge=0)
-    vat_rate: float = Field(default=8, ge=0, le=30)
+    vat_rate: float = Field(default=16, ge=0, le=30)
 
 
 class FeeOut(BaseModel):

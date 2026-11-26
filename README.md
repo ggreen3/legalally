@@ -131,6 +131,10 @@ The service creates one workspace per tenant/session, writes an `opencode.jsonc`
 
 `app/modules/spaces/router.py` powers the "Spaces" section: public search/filtering for serviced offices, shared team rooms, shortlets, leases and boardrooms, plus authenticated enquiry tracking and owner listings. Listings and enquiries are tenant-aware, rate-limited and audited. Seed listings are inserted idempotently by `app/seed.py` so a fresh database has a useful marketplace immediately.
 
+## Waitlist
+
+`https://legalally-ivory.vercel.app/waitlist` is the public early-access page for the BriefCase waitlist. Registrations are stored in the `waitlist` table and are de-duplicated by normalised email. Admin users can review responses at `GET /api/briefcase/waitlist` and download `legalally-waitlist.csv` from `GET /api/briefcase/waitlist/export`; the signed-in BriefCase view also shows the responses and download button.
+
 ## Research-backed workflows
 
 LegAlly now includes practical workflows derived from Kenyan legal-sector research rather than generic demo screens:

@@ -6,7 +6,7 @@
   "scripts": {
     "start": "bun src/index.ts",
     "dev": "bun --watch src/index.ts",
-    "typecheck": "bunx tsc --noEmit"
+    "typecheck": "bun x tsc --noEmit"
   },
   "dependencies": {
     "@opencode/sdk": "2.4.2"

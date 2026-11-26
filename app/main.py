@@ -7,7 +7,7 @@ from pathlib import Path
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from . import models  # noqa: F401
@@ -93,4 +93,11 @@ app.include_router(spaces.router, prefix="/api/spaces", tags=["spaces"])
 app.include_router(agent.router, prefix="/api/agent", tags=["agent"])
 
 static_dir = Path(__file__).parent / "static"
+
+
+@app.get("/waitlist", include_in_schema=False)
+def waitlist_page() -> FileResponse:
+    return FileResponse(static_dir / "waitlist.html")
+
+
 app.mount("/", StaticFiles(directory=static_dir, html=True), name="web")

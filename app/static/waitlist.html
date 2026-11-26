@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#080a0b">
+  <title>LegAlly — Join the waitlist</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-row">
+      <a class="brand" href="/" aria-label="LegAlly overview">
+        <span class="brand-mark" aria-hidden="true">LA</span>
+        <span class="brand-name">LegAlly</span>
+      </a>
+      <nav class="nav" aria-label="Waitlist navigation">
+        <a href="/">← Back to platform</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <section class="section active">
+      <div class="hero">
+        <div class="hero-copy">
+          <p class="eyebrow"><span class="eyebrow-rule"></span>Early access / BriefCase</p>
+          <h1>Get early access to <span class="accent-text">legal operations that work.</span></h1>
+          <p class="lede">Join the LegAlly waitlist. We will contact you when your workspace is ready for onboarding.</p>
+          <div class="hero-signals">
+            <span class="signal"><span class="dot live"></span>Live waitlist</span>
+            <span class="signal mono">No payment required</span>
+          </div>
+        </div>
+        <div class="hero-product" aria-label="Waitlist form">
+          <div class="window">
+            <div class="window-bar">
+              <span class="window-path mono">/waitlist</span>
+              <span class="window-state mono"><span class="dot live"></span>Open</span>
+            </div>
+            <div class="window-body">
+              <form id="wl-form" class="form-stack compact">
+                <label class="sr-only" for="wl-name">Name</label>
+                <input id="wl-name" placeholder="Full name" required minlength="2" autocomplete="name">
+                <label class="sr-only" for="wl-email">Email</label>
+                <input id="wl-email" type="email" placeholder="Work email" required autocomplete="email">
+                <label class="sr-only" for="wl-role">Role</label>
+                <input id="wl-role" placeholder="Role, e.g. advocate, student, founder" maxlength="80">
+                <button type="submit" class="btn primary">Join the waitlist <span aria-hidden="true">→</span></button>
+              </form>
+              <p id="wl-status" class="muted" role="status" aria-live="polite"></p>
+              <p class="muted">We use these details only to invite you to early access. No client data, no marketing spam.</p>
+            </div>
+            <div class="window-foot mono"><span>tenant: waitlist</span><span>region: KE</span><span>status: open</span></div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+  <script src="/waitlist.js"></script>
+</body>
+</html>

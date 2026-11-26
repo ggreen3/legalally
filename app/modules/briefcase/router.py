@@ -1,14 +1,17 @@
 from __future__ import annotations
 
+import csv
+import io
 import uuid
 from datetime import UTC, datetime, timedelta
 
 from fastapi import APIRouter, Depends, Query
+from fastapi.responses import PlainTextResponse
 from pydantic import BaseModel, EmailStr, Field
 from sqlalchemy.orm import Session
 
 from ...db import get_db
-from ...deps import get_current_user, get_tenant_id
+from ...deps import get_current_user, get_tenant_id, require_roles
 from ...errors import AppError
 from ...models import (
     AuditLog,
@@ -154,6 +157,16 @@ class WaitlistIn(BaseModel):
     name: str = Field(min_length=2, max_length=200)
     email: EmailStr
     role: str | None = Field(default=None, max_length=80)
+
+
+class WaitlistOut(BaseModel):
+    id: int
+    name: str
+    email: str
+    role: str | None
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
 
 
 @router.get("/overview")
@@ -377,8 +390,36 @@ def subscription(tenant_id: int = Depends(get_tenant_id), db: Session = Depends(
 
 @router.post("/waitlist", status_code=201)
 def join_waitlist(payload: WaitlistIn, db: Session = Depends(get_db)) -> dict:
-    if db.query(Waitlist).filter(Waitlist.email == payload.email).first():
+    email = str(payload.email).strip().lower()
+    if db.query(Waitlist).filter(Waitlist.email == email).first():
         raise AppError(409, "Already on the waitlist", "conflict")
-    db.add(Waitlist(**payload.model_dump()))
+    data = payload.model_dump()
+    data["name"] = data["name"].strip()
+    data["email"] = email
+    data["role"] = data["role"].strip() if data["role"] else None
+    db.add(Waitlist(**data))
     db.commit()
     return {"status": "registered"}
+
+
+@router.get("/waitlist", response_model=list[WaitlistOut])
+def list_waitlist(
+    _: User = Depends(require_roles("admin")),
+    db: Session = Depends(get_db),
+) -> list[WaitlistOut]:
+    rows = db.query(Waitlist).order_by(Waitlist.created_at.desc(), Waitlist.id.desc()).all()
+    return [WaitlistOut.model_validate(row) for row in rows]
+
+
+@router.get("/waitlist/export", response_class=PlainTextResponse)
+def export_waitlist(
+    _: User = Depends(require_roles("admin")),
+    db: Session = Depends(get_db),
+) -> str:
+    rows = db.query(Waitlist).order_by(Waitlist.created_at.desc(), Waitlist.id.desc()).all()
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(["id", "name", "email", "role", "created_at"])
+    for row in rows:
+        writer.writerow([row.id, row.name, row.email, row.role or "", row.created_at.isoformat()])
+    return output.getvalue()

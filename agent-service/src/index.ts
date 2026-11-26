@@ -57,9 +57,32 @@ function agentConfig(): Record<string, unknown> {
     { action: "webfetch", resource: "http://*", effect: "allow" },
     { action: "webfetch", resource: "https://*", effect: "allow" },
     { action: "websearch", resource: "*", effect: "allow" },
+    { action: "read", resource: "*.env", effect: "deny" },
+    { action: "read", resource: "*.env.*", effect: "deny" },
+    { action: "read", resource: "*/.env*", effect: "deny" },
+    { action: "read", resource: "*credentials*", effect: "deny" },
+    { action: "read", resource: "*secret*", effect: "deny" },
+    { action: "edit", resource: "*.env", effect: "deny" },
+    { action: "edit", resource: "*.env.*", effect: "deny" },
+    { action: "edit", resource: "*/.env*", effect: "deny" },
+    { action: "edit", resource: "*credentials*", effect: "deny" },
+    { action: "edit", resource: "*secret*", effect: "deny" },
+    { action: "webfetch", resource: "http://localhost*", effect: "deny" },
+    { action: "webfetch", resource: "https://localhost*", effect: "deny" },
+    { action: "webfetch", resource: "http://127.*", effect: "deny" },
+    { action: "webfetch", resource: "https://127.*", effect: "deny" },
+    { action: "webfetch", resource: "http://10.*", effect: "deny" },
+    { action: "webfetch", resource: "https://10.*", effect: "deny" },
+    { action: "webfetch", resource: "http://192.168.*", effect: "deny" },
+    { action: "webfetch", resource: "https://192.168.*", effect: "deny" },
+    { action: "webfetch", resource: "http://172.*", effect: "deny" },
+    { action: "webfetch", resource: "https://172.*", effect: "deny" },
+    { action: "webfetch", resource: "*.local", effect: "deny" },
     { action: "shell", resource: "*", effect: "deny" },
     { action: "subagent", resource: "*", effect: "deny" },
+    { action: "skill", resource: "*", effect: "deny" },
     { action: "question", resource: "*", effect: "deny" },
+    { action: "generate_image", resource: "*", effect: "deny" },
     { action: "external_directory", resource: "*", effect: "deny" },
     { action: "execute", resource: "*", effect: "deny" },
   ]
@@ -253,7 +276,7 @@ const server = Bun.serve({
       if (text.length < 3 || text.length > 8000) return fail(400, "Prompt must be between 3 and 8000 characters")
 
       try {
-        const { directory, meta } = await ensureSession(sessionKey, body.tenant_id, body.mode || metaMode(body.mode))
+        const { directory, meta } = await ensureSession(sessionKey, body.tenant_id, metaMode(body.mode))
         const opencode = await OpenCode.create()
         let sessionID = meta.openCodeSessionID
         try {
