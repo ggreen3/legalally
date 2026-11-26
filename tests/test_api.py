@@ -390,3 +390,87 @@ def test_static_ui_served(client):
     assert "The Checkbar" in response.text
     assert "not legal advice" in response.text
     assert "studio-consent" in response.text
+    assert "section-spaces" in response.text
+    assert "section-agent" in response.text
+    assert "agent-consent" in response.text
+
+
+def test_spaces_marketplace_and_enquiry(client):
+    listings = client.get("/api/spaces")
+    assert listings.status_code == 200
+    assert len(listings.json()) >= 1
+    first = listings.json()[0]
+
+    filters = client.get("/api/spaces/filters")
+    assert filters.status_code == 200
+    assert "Nairobi" in filters.json()["cities"]
+
+    detail = client.get(f"/api/spaces/{first['slug']}")
+    assert detail.status_code == 200
+    assert detail.json()["slug"] == first["slug"]
+
+    headers = register(client, "spaces@example.com", "Spaces Firm")
+    enquiry = client.post(
+        f"/api/spaces/{first['slug']}/enquiries",
+        headers=headers,
+        json={
+            "start_date": "1 Dec 2026",
+            "term": first["term"],
+            "message": "Please confirm availability.",
+            "contact_email": "spaces@example.com",
+        },
+    )
+    assert enquiry.status_code == 201
+    assert enquiry.json()["status"] == "new"
+
+    mine = client.get("/api/spaces/mine/enquiries", headers=headers)
+    assert mine.status_code == 200
+    assert any(row["id"] == enquiry.json()["id"] for row in mine.json())
+
+    listing = client.post(
+        "/api/spaces",
+        headers=headers,
+        json={
+            "title": "Test Chambers · Private suite",
+            "city": "Nairobi",
+            "area": "Upper Hill",
+            "space_type": "serviced",
+            "term": "monthly",
+            "price_cents": 2500000,
+            "capacity": 3,
+            "bedrooms": 0,
+            "bathrooms": 1,
+            "description": "A professional private suite for a boutique legal practice.",
+            "amenities": ["Internet", "Reception"],
+            "highlights": ["Three desks"],
+        },
+    )
+    assert listing.status_code == 201
+    assert listing.json()["slug"].startswith("test-chambers-private-suite")
+
+
+def test_agent_config_session_and_consent(client):
+    config = client.get("/api/agent/config")
+    assert config.status_code == 200
+    assert set(config.json()) >= {"connected", "mode", "model", "tools"}
+
+    headers = register(client, "agent@example.com", "Agent Firm")
+    session = client.post(
+        "/api/agent/sessions",
+        headers=headers,
+        json={"title": "Research workspace", "mode": "research"},
+    )
+    assert session.status_code == 201
+    key = session.json()["session_key"]
+
+    denied = client.post(
+        f"/api/agent/sessions/{key}/prompt",
+        headers=headers,
+        json={"text": "Draft a research note on e-filing.", "consent": False},
+    )
+    assert denied.status_code == 403
+    assert denied.json()["error"]["code"] == "agent_consent_required"
+
+    history = client.get(f"/api/agent/sessions/{key}", headers=headers)
+    assert history.status_code == 200
+    assert history.json()["messages"] == []

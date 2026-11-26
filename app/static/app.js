@@ -13,6 +13,12 @@ const state = {
   tasks: [],
   trustEntries: [],
   auditLogs: [],
+  spaces: [],
+  spaceFilters: null,
+  selectedSpace: null,
+  agentConfig: null,
+  agentSessions: [],
+  agentSessionKey: null,
   selectedCaseId: null,
   timer: null,
 };
@@ -190,6 +196,7 @@ function showSection(name) {
   $$(".section").forEach((section) => section.classList.toggle("active", section.id === `section-${name}`));
   $$(".nav button").forEach((button) => button.classList.toggle("active", button.dataset.nav === name));
   window.scrollTo({ top: 0, behavior: "smooth" });
+  if (name === "spaces") loadSpaces();
   if (!state.user) return;
   const refresh = {
     checkbar: loadCheckbar,
@@ -198,6 +205,8 @@ function showSection(name) {
     education: loadEducation,
     innovation: loadInnovation,
     platform: loadPlatformPrivate,
+    spaces: loadSpaceEnquiries,
+    agent: () => Promise.allSettled([loadAgentConfig(), loadAgentSessions()]),
   }[name];
   if (refresh) refresh();
 }
@@ -947,6 +956,9 @@ async function loadProtectedData() {
     loadInnovation(),
     loadWorkflows(),
     loadPlatformPrivate(),
+    loadSpaceEnquiries(),
+    loadAgentConfig(),
+    loadAgentSessions(),
   ]);
 }
 
@@ -1142,6 +1154,275 @@ async function runAI(preset, prompt, context) {
   });
 }
 
+function formatMoney(cents) {
+  return `KSh ${Math.round(Number(cents || 0) / 100).toLocaleString("en-KE")}`;
+}
+
+function titleCase(value) {
+  return String(value || "")
+    .split(/[-_]/)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
+function spaceCard(space) {
+  return `
+    <article class="space-card accent-${escapeHtml(space.accent)}">
+      <div class="space-visual">
+        <span class="mono">${escapeHtml(space.city)} / ${escapeHtml(space.space_type)}</span>
+        <strong>${escapeHtml(space.area)}</strong>
+        ${space.featured ? '<span class="space-badge">Featured</span>' : ""}
+      </div>
+      <div class="space-card-body">
+        <div class="space-card-head">
+          <h4>${escapeHtml(space.title)}</h4>
+          <p class="space-price">${formatMoney(space.price_cents)}<span>/${escapeHtml(space.term)}</span></p>
+        </div>
+        <p class="muted">${escapeHtml(space.description.slice(0, 140))}${space.description.length > 140 ? "..." : ""}</p>
+        <div class="chip-row muted-chips">
+          <span>${space.capacity} desks</span>
+          ${space.bedrooms ? `<span>${space.bedrooms} bedroom${space.bedrooms > 1 ? "s" : ""}</span>` : ""}
+          <span>${escapeHtml(titleCase(space.term))}</span>
+        </div>
+        <button type="button" class="btn ghost small" data-space-slug="${escapeHtml(space.slug)}">View space</button>
+      </div>
+    </article>`;
+}
+
+async function loadSpaceFilters() {
+  const filters = await api("/api/spaces/filters");
+  state.spaceFilters = filters;
+  const fill = (selector, values, formatter = titleCase) => {
+    const el = $(selector);
+    if (!el) return;
+    const placeholder = el.querySelector("option").outerHTML;
+    el.innerHTML = placeholder + values.map((value) => `<option value="${escapeHtml(value)}">${escapeHtml(formatter(value))}</option>`).join("");
+  };
+  fill("#space-city", filters.cities || [], (value) => value);
+  fill("#space-type", filters.types || []);
+  fill("#space-term", filters.terms || []);
+}
+
+async function loadSpaces() {
+  const params = new URLSearchParams();
+  const values = {
+    q: $("#space-q")?.value.trim(),
+    city: $("#space-city")?.value,
+    space_type: $("#space-type")?.value,
+    term: $("#space-term")?.value,
+    max_price_cents: $("#space-max-price")?.value,
+    min_capacity: $("#space-capacity")?.value,
+    sort: $("#space-sort")?.value || "featured",
+  };
+  Object.entries(values).forEach(([key, value]) => {
+    if (value) params.set(key, String(value));
+  });
+  if (values.max_price_cents) params.set("max_price_cents", String(Number(values.max_price_cents) * 100));
+  const rows = await api(`/api/spaces?${params.toString()}`);
+  state.spaces = rows;
+  const grid = $("#space-grid");
+  grid.innerHTML = rows.length
+    ? rows.map(spaceCard).join("")
+    : '<div class="panel empty">No spaces match those filters. Try another city or term.</div>';
+  if (state.user) await loadSpaceEnquiries();
+}
+
+async function loadSpaceEnquiries() {
+  if (!state.token || !state.user) return;
+  const rows = await api("/api/spaces/mine/enquiries");
+  const el = $("#space-enquiries");
+  el.innerHTML = rows.length
+    ? rows
+        .map(
+          (row) => `<div class="list-row"><strong>${escapeHtml(row.space_title)}</strong><span class="mono">${escapeHtml(row.status)}</span><span>${escapeHtml(row.start_date)} · ${escapeHtml(titleCase(row.term))}</span></div>`
+        )
+        .join("")
+    : '<p class="empty">No enquiries yet.</p>';
+}
+
+async function openSpaceDetail(slug) {
+  try {
+    const space = await api(`/api/spaces/${encodeURIComponent(slug)}`);
+    state.selectedSpace = space;
+    $("#space-detail-kicker").textContent = `${space.city} / ${space.area} / ${titleCase(space.space_type)}`;
+    $("#space-detail-title").textContent = space.title;
+    $("#space-detail-description").textContent = space.description;
+    $("#space-detail-highlights").innerHTML = (space.highlights || []).map((item) => `<span>${escapeHtml(item)}</span>`).join("");
+    $("#space-detail-amenities").innerHTML = (space.amenities || []).map((item) => `<span>${escapeHtml(item)}</span>`).join("");
+    $("#enquiry-start").value = space.available_from || "";
+    $("#enquiry-term").value = space.term;
+    $("#enquiry-email").value = state.user?.email || "";
+    $("#space-detail").hidden = false;
+    $("#space-detail").scrollIntoView({ behavior: "smooth", block: "start" });
+  } catch (error) {
+    toast(error.message, "error");
+  }
+}
+
+async function createSpaceEnquiry(event) {
+  event.preventDefault();
+  if (!state.selectedSpace) return;
+  try {
+    await api(`/api/spaces/${encodeURIComponent(state.selectedSpace.slug)}/enquiries`, {
+      method: "POST",
+      body: JSON.stringify({
+        start_date: $("#enquiry-start").value.trim(),
+        term: $("#enquiry-term").value,
+        message: $("#enquiry-message").value.trim() || null,
+        contact_email: $("#enquiry-email").value.trim(),
+      }),
+    });
+    $("#enquiry-message").value = "";
+    toast("Enquiry sent. The owner can now follow up in the workspace.", "success");
+    await loadSpaceEnquiries();
+  } catch (error) {
+    toast(error.message, "error");
+  }
+}
+
+async function submitSpaceListing(event) {
+  event.preventDefault();
+  try {
+    await api("/api/spaces", {
+      method: "POST",
+      body: JSON.stringify({
+        title: $("#listing-title").value.trim(),
+        city: $("#listing-city").value.trim(),
+        area: $("#listing-area").value.trim(),
+        space_type: $("#listing-type").value,
+        term: $("#listing-term").value,
+        price_cents: Math.round(Number($("#listing-price").value) * 100),
+        capacity: Number($("#listing-capacity").value),
+        bedrooms: 0,
+        bathrooms: 0,
+        description: $("#listing-description").value.trim(),
+        amenities: $("#listing-amenities").value.split(",").map((item) => item.trim()).filter(Boolean),
+        highlights: [],
+        available_from: $("#listing-available").value.trim() || null,
+      }),
+    });
+    event.target.reset();
+    $("#space-listing-panel").hidden = true;
+    toast("Listing published.", "success");
+    await loadSpaces();
+  } catch (error) {
+    toast(error.message, "error");
+  }
+}
+
+function renderAgentStatus() {
+  const config = state.agentConfig;
+  const el = $("#agent-config");
+  const banner = $("#agent-status");
+  if (!config) return;
+  const connected = config.connected;
+  const status = connected
+    ? `Connected · ${escapeHtml(config.mode)} · ${escapeHtml(config.model)}`
+    : "Studio fallback · OpenCode service not configured";
+  banner.textContent = status;
+  banner.dataset.mode = connected ? "live" : "fallback";
+  el.innerHTML = `
+    <div class="agent-config-row"><span class="mono">Status</span><strong>${connected ? "Ready" : "Fallback"}</strong></div>
+    <div class="agent-config-row"><span class="mono">Tools</span><span>${(config.tools || []).map(escapeHtml).join(", ")}</span></div>
+    <p class="muted">${connected ? "Sessions run in an isolated OpenCode workspace. Shell access is disabled." : "Deploy agent-service and set AGENT_SERVICE_URL plus AGENT_SERVICE_KEY to enable the embedded OpenCode agent."}</p>`;
+}
+
+function renderAgentThread(messages = []) {
+  const el = $("#agent-thread");
+  if (!messages.length) {
+    el.innerHTML = '<div class="agent-empty"><span class="mono">Workspace ready</span><h4>What should we work on?</h4><p class="muted">Draft a memo, research a procedure, review a clause or plan a matter. Verify all output before use.</p></div>';
+    return;
+  }
+  el.innerHTML = messages
+    .map(
+      (message) => `
+        <article class="agent-message agent-${escapeHtml(message.role)}">
+          <span class="mono">${escapeHtml(message.role)}</span>
+          <div>${legalDocumentHtml(message.content, "No content.")}</div>
+        </article>`
+    )
+    .join("");
+  el.scrollTop = el.scrollHeight;
+}
+
+function renderAgentSessions() {
+  const el = $("#agent-session-list");
+  el.innerHTML = state.agentSessions.length
+    ? state.agentSessions
+        .map(
+          (session) => `<button type="button" class="agent-session ${session.session_key === state.agentSessionKey ? "active" : ""}" data-agent-session="${escapeHtml(session.session_key)}">${escapeHtml(session.title)}</button>`
+        )
+        .join("")
+    : '<p class="empty">No sessions yet.</p>';
+}
+
+async function loadAgentConfig() {
+  state.agentConfig = await api("/api/agent/config");
+  renderAgentStatus();
+}
+
+async function loadAgentSessions() {
+  if (!state.token || !state.user) return;
+  state.agentSessions = await api("/api/agent/sessions");
+  if (!state.agentSessionKey && state.agentSessions.length) {
+    state.agentSessionKey = state.agentSessions[0].session_key;
+  }
+  renderAgentSessions();
+  if (state.agentSessionKey) await openAgentSession(state.agentSessionKey);
+}
+
+async function openAgentSession(sessionKey) {
+  const detail = await api(`/api/agent/sessions/${encodeURIComponent(sessionKey)}`);
+  state.agentSessionKey = sessionKey;
+  renderAgentSessions();
+  renderAgentThread(detail.messages);
+}
+
+async function createAgentSession() {
+  try {
+    const session = await api("/api/agent/sessions", {
+      method: "POST",
+      body: JSON.stringify({ title: "New workspace", mode: "workspace" }),
+    });
+    state.agentSessionKey = session.session_key;
+    await loadAgentSessions();
+    await openAgentSession(session.session_key);
+    $("#agent-input").focus();
+  } catch (error) {
+    toast(error.message, "error");
+  }
+}
+
+async function sendAgentPrompt(event) {
+  event.preventDefault();
+  const input = $("#agent-input");
+  const button = $("#agent-send");
+  const text = input.value.trim();
+  if (!text) return;
+  if (!$("#agent-consent").checked) {
+    toast("Confirm the AI-use notice first.", "error");
+    return;
+  }
+  button.disabled = true;
+  button.textContent = "Working...";
+  try {
+    if (!state.agentSessionKey) await createAgentSession();
+    await api(`/api/agent/sessions/${encodeURIComponent(state.agentSessionKey)}/prompt`, {
+      method: "POST",
+      body: JSON.stringify({ text, consent: true }),
+    });
+    input.value = "";
+    $("#agent-consent").checked = false;
+    await openAgentSession(state.agentSessionKey);
+    toast("Agent response ready.", "success");
+  } catch (error) {
+    toast(error.message, "error");
+  } finally {
+    button.disabled = false;
+    button.textContent = "Send";
+  }
+}
+
 function wireEvents() {
   $$("[data-nav]").forEach((el) => el.addEventListener("click", () => showSection(el.dataset.nav)));
 
@@ -1181,6 +1462,30 @@ function wireEvents() {
   $("#register-btn").addEventListener("click", authenticate);
   $("#registry-form").addEventListener("submit", createRegistryTask);
   $("#studio-form").addEventListener("submit", runStudio);
+  $("#space-filter-form").addEventListener("submit", async (event) => {
+    event.preventDefault();
+    await loadSpaces();
+  });
+  $("#space-grid").addEventListener("click", (event) => {
+    const target = event.target.closest("[data-space-slug]");
+    if (target) openSpaceDetail(target.dataset.spaceSlug);
+  });
+  $("#space-detail-close").addEventListener("click", () => {
+    $("#space-detail").hidden = true;
+    state.selectedSpace = null;
+  });
+  $("#space-enquiry-form").addEventListener("submit", createSpaceEnquiry);
+  $("#open-space-listing").addEventListener("click", () => {
+    $("#space-listing-panel").hidden = !$("#space-listing-panel").hidden;
+    if (!$("#space-listing-panel").hidden) $("#space-listing-panel").scrollIntoView({ behavior: "smooth", block: "start" });
+  });
+  $("#space-listing-form").addEventListener("submit", submitSpaceListing);
+  $("#agent-form").addEventListener("submit", sendAgentPrompt);
+  $("#agent-new-session").addEventListener("click", createAgentSession);
+  $("#agent-session-list").addEventListener("click", (event) => {
+    const target = event.target.closest("[data-agent-session]");
+    if (target) openAgentSession(target.dataset.agentSession).catch((error) => toast(error.message, "error"));
+  });
   $("#logout-btn").addEventListener("click", () => {
     if (activeStream) {
       activeStream.abort();
@@ -1626,7 +1931,16 @@ function wireEvents() {
 
 async function init() {
   wireEvents();
-  await Promise.allSettled([loadPillars(), loadHealth(), loadTalent(), loadEducation(), loadGuides(), configureGoogleSignIn()]);
+  await Promise.allSettled([
+    loadPillars(),
+    loadHealth(),
+    loadTalent(),
+    loadEducation(),
+    loadGuides(),
+    loadSpaceFilters(),
+    loadSpaces(),
+    configureGoogleSignIn(),
+  ]);
   if (state.token) {
     try {
       state.user = await api("/api/auth/me");

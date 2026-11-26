@@ -28,6 +28,8 @@
         <button type="button" data-nav="innovation"><span class="nav-idx">05</span>Innovation</button>
         <button type="button" data-nav="access"><span class="nav-idx">06</span>Access</button>
         <button type="button" data-nav="platform"><span class="nav-idx">07</span>Platform</button>
+        <button type="button" data-nav="spaces"><span class="nav-idx">08</span>Spaces</button>
+        <button type="button" data-nav="agent"><span class="nav-idx">09</span>Agent</button>
       </nav>
       <div class="authbar">
         <span class="status-cluster">
@@ -66,6 +68,7 @@
           <div class="hero-actions">
             <button type="button" class="btn primary" data-nav="checkbar">Open The Checkbar <span aria-hidden="true">→</span></button>
             <button type="button" class="btn ghost" data-nav="briefcase">Explore BriefCase</button>
+            <button type="button" class="btn ghost" data-nav="spaces">Find office space</button>
           </div>
           <div class="hero-signals">
             <span class="signal"><span class="dot live"></span><span id="hero-health">Checking system</span></span>
@@ -545,6 +548,103 @@
       <div class="panel requires-auth">
         <div class="panel-head"><h3>Audit log</h3><span class="mono panel-kicker">Last 100 events</span></div>
         <div id="audit-list" class="list"></div>
+      </div>
+    </section>
+
+    <section id="section-spaces" class="section">
+      <div class="section-heading">
+        <p class="eyebrow"><span class="idx mono">08</span>Workplace marketplace</p>
+        <h2>Space that fits the matter.</h2>
+        <p class="muted">Browse serviced offices, private team rooms, shortlets and boardrooms. Requests stay inside your LegAlly workspace.</p>
+      </div>
+
+      <form id="space-filter-form" class="panel market-toolbar">
+        <label><span class="mono">Search</span><input id="space-q" type="search" placeholder="Nairobi, Westlands, boardroom..."></label>
+        <label><span class="mono">City</span><select id="space-city"><option value="">All cities</option></select></label>
+        <label><span class="mono">Type</span><select id="space-type"><option value="">All types</option></select></label>
+        <label><span class="mono">Term</span><select id="space-term"><option value="">All terms</option></select></label>
+        <label><span class="mono">Max / unit</span><input id="space-max-price" type="number" min="0" step="10000" placeholder="KSh"></label>
+        <label><span class="mono">Desks</span><input id="space-capacity" type="number" min="1" placeholder="Min"></label>
+        <label><span class="mono">Sort</span><select id="space-sort"><option value="featured">Featured</option><option value="price_asc">Price: low to high</option><option value="price_desc">Price: high to low</option><option value="capacity">Capacity</option></select></label>
+        <button type="submit" class="btn primary small">Search spaces</button>
+      </form>
+
+      <div class="market-layout">
+        <div id="space-grid" class="space-grid"></div>
+        <aside class="panel market-side">
+          <div class="panel-head"><h3>Your enquiries</h3><span class="mono panel-kicker">Workspace</span></div>
+          <div id="space-enquiries" class="list requires-auth"></div>
+          <div class="market-side-cta requires-auth">
+            <p class="muted">Listing a practice space? Add it to the marketplace in under a minute.</p>
+            <button id="open-space-listing" type="button" class="btn ghost small">List your space</button>
+          </div>
+        </aside>
+      </div>
+
+      <div id="space-listing-panel" class="panel requires-auth" hidden>
+        <div class="panel-head"><h3>List a space</h3><span class="mono panel-kicker">Owner form</span></div>
+        <form id="space-listing-form" class="form-grid">
+          <label><span>Title</span><input id="listing-title" required minlength="6" placeholder="e.g. Westlands partner suite"></label>
+          <label><span>City</span><input id="listing-city" required placeholder="Nairobi"></label>
+          <label><span>Area</span><input id="listing-area" required placeholder="Westlands"></label>
+          <label><span>Type</span><select id="listing-type"><option value="serviced">Serviced</option><option value="shared">Shared</option><option value="shortlet">Shortlet</option><option value="lease">Lease</option><option value="meeting">Meeting room</option></select></label>
+          <label><span>Term</span><select id="listing-term"><option value="hourly">Hourly</option><option value="daily">Daily</option><option value="monthly">Monthly</option><option value="quarterly">Quarterly</option><option value="yearly">Yearly</option></select></label>
+          <label><span>Price per term (KSh)</span><input id="listing-price" type="number" min="1" required></label>
+          <label><span>Desks</span><input id="listing-capacity" type="number" min="1" value="4" required></label>
+          <label><span>Available</span><input id="listing-available" placeholder="Immediate or date"></label>
+          <label class="wide"><span>Description</span><textarea id="listing-description" required minlength="20" placeholder="Describe the space, access, support and suitability."></textarea></label>
+          <label class="wide"><span>Amenities, comma separated</span><input id="listing-amenities" placeholder="Fibre internet, reception, parking"></label>
+          <button type="submit" class="btn primary small wide">Publish listing</button>
+        </form>
+      </div>
+
+      <div id="space-detail" class="space-detail" hidden>
+        <div class="space-detail-main">
+          <button id="space-detail-close" type="button" class="btn ghost small">Close</button>
+          <p id="space-detail-kicker" class="mono"></p>
+          <h3 id="space-detail-title"></h3>
+          <p id="space-detail-description" class="muted"></p>
+          <div id="space-detail-highlights" class="chip-row"></div>
+          <div id="space-detail-amenities" class="chip-row muted-chips"></div>
+        </div>
+        <form id="space-enquiry-form" class="panel requires-auth">
+          <div class="panel-head"><h3>Request this space</h3><span class="mono panel-kicker">No payment yet</span></div>
+          <label><span>Start date or period</span><input id="enquiry-start" required placeholder="e.g. 1 Dec 2026"></label>
+          <label><span>Term</span><select id="enquiry-term"><option value="hourly">Hourly</option><option value="daily">Daily</option><option value="monthly">Monthly</option><option value="quarterly">Quarterly</option><option value="yearly">Yearly</option></select></label>
+          <label><span>Contact email</span><input id="enquiry-email" type="email" required></label>
+          <label><span>Message</span><textarea id="enquiry-message" placeholder="Tell the owner what you need."></textarea></label>
+          <button type="submit" class="btn primary small">Send enquiry</button>
+        </form>
+      </div>
+    </section>
+
+    <section id="section-agent" class="section requires-auth">
+      <div class="section-heading">
+        <p class="eyebrow"><span class="idx mono">09</span>Workspace agent</p>
+        <h2>LegAlly Agent.</h2>
+        <p class="muted">A white-labelled OpenCode workspace for drafting, research and practical next steps, available inside the platform.</p>
+      </div>
+      <div class="agent-shell">
+        <aside class="agent-rail">
+          <div class="panel-head"><h3>Sessions</h3><span class="mono panel-kicker">Local</span></div>
+          <button id="agent-new-session" type="button" class="btn ghost small">New workspace</button>
+          <div id="agent-session-list" class="list"></div>
+          <div id="agent-config" class="agent-config"></div>
+        </aside>
+        <div class="agent-main">
+          <div id="agent-status" class="agent-status"></div>
+          <div id="agent-thread" class="agent-thread"></div>
+          <form id="agent-form" class="agent-composer">
+            <label class="sr-only" for="agent-input">Message</label>
+            <textarea id="agent-input" required minlength="3" maxlength="8000" placeholder="Ask the Agent to draft, research, review or plan..."></textarea>
+            <label class="check-row">
+              <input id="agent-consent" type="checkbox" required>
+              <span>I confirm no protected client data is included unless authorised, and I will verify every output.</span>
+            </label>
+            <button id="agent-send" type="submit" class="btn primary small">Send</button>
+          </form>
+          <p class="muted agent-disclaimer">The Agent makes mistakes and does not replace a qualified advocate. Free OpenCode models are disabled by default in the connected service.</p>
+        </div>
       </div>
     </section>
   </main>

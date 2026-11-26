@@ -6,8 +6,10 @@ LegAlly is a modular monolith with a single FastAPI application serving both the
 
 ```text
 Browser -> FastAPI middleware -> Routers -> Services/helpers -> SQLAlchemy -> Database
-                                      |
-                                      +-> AuditLog
+                                       |                         |
+                                       +-> AuditLog              +-> Pico transport
+                                       |
+                                       +-> Agent service -> embedded OpenCode SDK -> isolated workspace
 ```
 
 ## Request lifecycle
@@ -44,6 +46,8 @@ Core entities in `app/models.py`:
 - Practice controls: `MatterTask`, `ConflictCheck`, `CddRecord`, `TrustTransaction`, `AiOutput`, `CpdRecord`
 - Access and drafting content: `LegalGuide`, `DraftTemplate`
 - Ecosystem: `Opportunity`, `Application`, `Resource`, `Enrollment`, `Innovation`
+- Workspace marketplace: `OfficeSpace`, `SpaceEnquiry`
+- Agent workspace: `AgentSession`, `AgentMessage`
 
 SQLite is the development default. Production uses the Neon `DATABASE_URL` injected by the Vercel integration (`legalally-prod-db`, Neon ID `polished-dust-98711532`) through the same SQLAlchemy interface in `app/db.py`. If `DATABASE_URL` is absent and Vercel injects `VERCEL=1`, the default is `sqlite:////tmp/legalally.db` to avoid write failures on the read-only function filesystem; that fallback is ephemeral and only a safety net. Startup calls `init_db()` and `seed_db()` so fresh environments have demo identities and the seeded guide/template library.
 
@@ -65,6 +69,14 @@ No API key is exposed to the browser.
 `app/modules/checkbar/router.py` exposes `/api/checkbar/stream`. It authenticates from the `token` query parameter or first frame, validates the question with `AskRequest`, relays chunks as `{ type: "chunk", text }`, persists the final answer as provider `pico`, emits `{ type: "done", id, provider }`, and logs `checkbar.stream`. Timeouts and provider errors emit `{ type: "error", message }`; the browser falls back to the non-streaming `POST /api/checkbar/ask`.
 
 `app/modules/ai/router.py` reuses the same transport for document drafting, case strategy and legal companion presets via three Pico app IDs from the original prototype. App IDs are configuration, not secrets. All AI calls are authenticated, rate limited, persisted as `AiOutput`, and audited. `app/modules/workflows/router.py` adds template drafting and `POST /api/workflows/ai/{output_id}/verify` so a human can record that an AI draft was reviewed.
+
+## Agent design
+
+`app/modules/agent/router.py` is the authenticated browser-facing API. It stores tenant-scoped sessions and messages in `AgentSession` and `AgentMessage`, enforces explicit AI-use consent, rate limits prompts, writes audit events, and either calls the configured agent service or reports an honest Studio fallback.
+
+`agent-service/src/index.ts` is a long-running Bun host using `@opencode/sdk`. The SDK runs OpenCode in-process with no public listener. Each prompt gets an isolated tenant/session directory containing a generated `opencode.jsonc` permission policy and `AGENTS.md`. Shell execution, subagents, external directory access, code mode and permission prompts are denied. Workspace reads/writes and web research are allowed; Playwright browser MCP tools are opt-in via `ENABLE_BROWSER_TOOLS`. Free models are disabled by default with `OPENCODE_DISABLE_FREE_MODELS=1`.
+
+The main Vercel Python app cannot host this SDK directly, so the service is a separate deployment. `AGENT_SERVICE_URL` and `AGENT_SERVICE_KEY` connect the two. Provider credentials stay in the service environment and never reach the browser. OpenCode and Anomaly marks are not renamed or presented as LegAlly branding.
 
 ## BriefCase design
 

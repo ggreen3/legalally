@@ -306,3 +306,60 @@ class CpdRecord(TimestampMixin, Base):
     units: Mapped[int] = mapped_column(Integer, default=1)
     completed_at: Mapped[datetime] = mapped_column(DateTime, default=lambda: datetime.now(UTC))
     evidence_url: Mapped[str | None] = mapped_column(String(300), nullable=True)
+
+
+class OfficeSpace(TimestampMixin, Base):
+    __tablename__ = "office_spaces"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    owner_tenant_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
+    title: Mapped[str] = mapped_column(String(200))
+    slug: Mapped[str] = mapped_column(String(220), unique=True, index=True)
+    city: Mapped[str] = mapped_column(String(100), index=True)
+    area: Mapped[str] = mapped_column(String(120))
+    space_type: Mapped[str] = mapped_column(String(40), index=True)
+    term: Mapped[str] = mapped_column(String(30), default="monthly")
+    price_cents: Mapped[int] = mapped_column(Integer)
+    capacity: Mapped[int] = mapped_column(Integer, default=1)
+    bedrooms: Mapped[int] = mapped_column(Integer, default=0)
+    bathrooms: Mapped[int] = mapped_column(Integer, default=0)
+    description: Mapped[str] = mapped_column(Text)
+    amenities: Mapped[list[str]] = mapped_column(JSON, default=list)
+    highlights: Mapped[list[str]] = mapped_column(JSON, default=list)
+    accent: Mapped[str] = mapped_column(String(30), default="teal")
+    available_from: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    status: Mapped[str] = mapped_column(String(30), default="available", index=True)
+    featured: Mapped[bool] = mapped_column(Boolean, default=False)
+
+
+class SpaceEnquiry(TimestampMixin, Base):
+    __tablename__ = "space_enquiries"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    tenant_id: Mapped[int] = mapped_column(Integer, index=True)
+    user_id: Mapped[int] = mapped_column(Integer, index=True)
+    space_id: Mapped[int] = mapped_column(ForeignKey("office_spaces.id"), index=True)
+    start_date: Mapped[str] = mapped_column(String(40))
+    term: Mapped[str] = mapped_column(String(30))
+    message: Mapped[str | None] = mapped_column(Text, nullable=True)
+    contact_email: Mapped[str] = mapped_column(String(255))
+    status: Mapped[str] = mapped_column(String(30), default="new", index=True)
+
+
+class AgentSession(TimestampMixin, Base):
+    __tablename__ = "agent_sessions"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    tenant_id: Mapped[int] = mapped_column(Integer, index=True)
+    user_id: Mapped[int] = mapped_column(Integer, index=True)
+    session_key: Mapped[str] = mapped_column(String(120), unique=True, index=True)
+    title: Mapped[str] = mapped_column(String(200), default="New workspace")
+    status: Mapped[str] = mapped_column(String(30), default="active")
+    mode: Mapped[str] = mapped_column(String(40), default="workspace")
+
+
+class AgentMessage(TimestampMixin, Base):
+    __tablename__ = "agent_messages"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    tenant_id: Mapped[int] = mapped_column(Integer, index=True)
+    session_id: Mapped[int] = mapped_column(ForeignKey("agent_sessions.id"), index=True)
+    role: Mapped[str] = mapped_column(String(30), index=True)
+    content: Mapped[str] = mapped_column(Text)
+    parts_json: Mapped[list[dict[str, Any]] | None] = mapped_column(JSON, nullable=True)

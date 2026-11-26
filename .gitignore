@@ -12,3 +12,5 @@ legalally.db
 .vercel/
 dist/
 build/
+agent-service/node_modules/
+agent-service/workspaces/

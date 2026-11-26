@@ -15,6 +15,7 @@ from .config import settings
 from .db import init_db
 from .errors import register_error_handlers
 from .modules import (
+    agent,
     ai,
     auth,
     briefcase,
@@ -22,6 +23,7 @@ from .modules import (
     education,
     innovation,
     platform,
+    spaces,
     talent,
     workflows,
 )
@@ -87,6 +89,8 @@ app.include_router(education.router, prefix="/api/education", tags=["education"]
 app.include_router(innovation.router, prefix="/api/innovation", tags=["innovation"])
 app.include_router(platform.router, prefix="/api/platform", tags=["platform"])
 app.include_router(workflows.router, prefix="/api/workflows", tags=["workflows"])
+app.include_router(spaces.router, prefix="/api/spaces", tags=["spaces"])
+app.include_router(agent.router, prefix="/api/agent", tags=["agent"])
 
 static_dir = Path(__file__).parent / "static"
 app.mount("/", StaticFiles(directory=static_dir, html=True), name="web")

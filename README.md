@@ -101,6 +101,36 @@ The same Pico transport powers `POST /api/ai/ask` with four presets: `checkbar`,
 - OpenCode and Anomaly trademarks, logos and colours may not be renamed, recoloured or presented as LegAlly's own, and may not imply endorsement. If LegAlly later embeds OpenCode, describe it as "LegAlly Studio, built with OpenCode", link to `https://opencode.ai`, and use unmodified official badge assets.
 - The current site makes no claim that Studio is OpenCode or Big Pickle. Studio shows an AI-use notice, requires confirmation before each run, and warns users not to submit protected client data without authorisation.
 
+## LegAlly Agent
+
+`app/modules/agent/router.py` adds an authenticated, tenant-isolated Agent workspace to the site. Users create sessions, send prompts, see thread history, and receive a disclosure. Without the service env vars, the platform clearly reports "Studio fallback" and uses the existing companion transport; it never pretends the OpenCode service is connected.
+
+`agent-service/` is the separate Bun host that makes the embedded OpenCode feature real:
+
+```bash
+cd agent-service
+bun install
+cp .env.example .env
+bun run dev
+```
+
+Set `AGENT_SERVICE_KEY` to a long random value and set `OPENCODE_MODEL` plus the matching provider API key, for example `ANTHROPIC_API_KEY`. `OPENCODE_DISABLE_FREE_MODELS=1` is set by default; free models must stay disabled for confidential legal work unless informed consent is captured. `ENABLE_BROWSER_TOOLS=1` adds a Playwright MCP browser server for public-web research only.
+
+Deploy `agent-service/` as a long-running Bun container, then set these on the main FastAPI app:
+
+```text
+AGENT_SERVICE_URL=https://your-agent-service.example
+AGENT_SERVICE_KEY=same-long-random-value
+AGENT_MODEL=anthropic/claude-sonnet-5-5
+AGENT_TIMEOUT_SECONDS=90
+```
+
+The service creates one workspace per tenant/session, writes an `opencode.jsonc` permission policy, and uses `@opencode/sdk` in-process. Shell execution, subagents, external directories, code mode and permission prompts are denied; workspace reads/writes, web fetch/web search are allowed, and browser tools are optional. Users interact through the site exactly as with other workspace features; no OpenCode CLI is required.
+
+## Workspace marketplace
+
+`app/modules/spaces/router.py` powers the "Spaces" section: public search/filtering for serviced offices, shared team rooms, shortlets, leases and boardrooms, plus authenticated enquiry tracking and owner listings. Listings and enquiries are tenant-aware, rate-limited and audited. Seed listings are inserted idempotently by `app/seed.py` so a fresh database has a useful marketplace immediately.
+
 ## Research-backed workflows
 
 LegAlly now includes practical workflows derived from Kenyan legal-sector research rather than generic demo screens:

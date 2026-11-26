@@ -29,6 +29,10 @@ class Settings(BaseSettings):
     pico_companion_app_id: str = "past-short"
     pico_stream_timeout_seconds: int = 25
     pico_max_prompt_chars: int = 4000
+    agent_service_url: str | None = None
+    agent_service_key: str | None = None
+    agent_model: str = "anthropic/claude-sonnet-5-5"
+    agent_timeout_seconds: int = 90
     log_level: str = "INFO"
 
 
